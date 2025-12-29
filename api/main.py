@@ -26,7 +26,10 @@ app.add_middleware(
 
 # Database connection helper
 def get_db():
-    conn = sqlite3.connect('data/fotherbys.db') 
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    DB_PATH = BASE_DIR / "data" / "fotherbys.db"
+    
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     try:
         yield conn
