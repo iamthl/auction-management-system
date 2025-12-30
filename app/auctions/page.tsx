@@ -89,7 +89,7 @@ export default function AuctionsPage() {
                       <MapPin className="h-4 w-4" />
                       {auction.location}
                     </div>
-                    <Link href={`/catalogue?auction_id=${auction.id}`}>
+                    <Link href={`/auctions/${auction.id}`}>
                       <Button variant="outline" className="w-full mt-4 bg-transparent">
                         View Catalogue
                       </Button>

@@ -208,4 +208,10 @@ export const api = {
     if (!res.ok) throw new Error("Failed to fetch client lots")
     return res.json()
   },
+
+  async getAuction(id: number): Promise<Auction> {
+    const res = await fetch(`${API_BASE_URL}/api/auctions/${id}`)
+    if (!res.ok) throw new Error("Failed to fetch auction")
+    return res.json()
+  },
 }

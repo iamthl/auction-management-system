@@ -68,7 +68,7 @@ export default function AuctionsPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `${auctionTitle.replace(/\s+/g, "_")}_Catalogue.pdf`
+      a.download = `Fotherby_${auctionTitle.replace(/\s+/g, "_")}_Catalogue.pdf`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
