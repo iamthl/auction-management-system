@@ -68,7 +68,7 @@ export default function CataloguePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-muted-foreground">
             <Select value={locationFilter} onValueChange={setLocationFilter}>
               <SelectTrigger>
                 <MapPin className="h-4 w-4 mr-2" />
@@ -89,7 +89,7 @@ export default function CataloguePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="Live">Live Auctions</SelectItem>
+                <SelectItem value="Physical">Physical Auctions</SelectItem>
                 <SelectItem value="Online">Online Auctions</SelectItem>
               </SelectContent>
             </Select>
@@ -145,7 +145,6 @@ export default function CataloguePage() {
                     )}
                     <div className="absolute top-4 right-4 flex gap-2">
                       <Badge>{lot.triage_status}</Badge>
-                      {lot.auction_type && <Badge variant="outline">{lot.auction_type}</Badge>}
                     </div>
                   </div>
                   <CardContent className="p-6">

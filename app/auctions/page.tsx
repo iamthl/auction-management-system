@@ -53,10 +53,10 @@ export default function AuctionsPage() {
           <p className="text-lg text-muted-foreground">View upcoming auctions and past results</p>
         </div>
 
-        <Tabs defaultValue="upcoming" className="w-full">
+        <Tabs defaultValue="upcoming" className="w-full ">
           <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="upcoming">Upcoming Auctions</TabsTrigger>
-            <TabsTrigger value="results">Past Results</TabsTrigger>
+            <TabsTrigger value="upcoming" className="text-muted-foreground">Upcoming Auctions</TabsTrigger>
+            <TabsTrigger value="results" className="text-muted-foreground">Past Results</TabsTrigger>
           </TabsList>
 
           <TabsContent value="upcoming" className="mt-8">

@@ -18,7 +18,7 @@ export default function HomePage() {
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto text-balance">
             Connecting collectors with exceptional works since 1961
           </p>
-          <div className="flex gap-4 justify-center pt-4">
+          <div className="flex gap-4 justify-center pt-4 text-muted-foreground">
             <Button size="lg" asChild>
               <Link href="/catalogue">
                 View Catalogue
@@ -74,7 +74,7 @@ export default function HomePage() {
             Coming Soon
           </div>
           <h2 className="text-3xl md:text-5xl font-serif font-bold text-foreground text-balance">
-            Live Online Bidding
+             Online Bidding
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-balance">
             Join our auctions from anywhere in the world. Real-time bidding platform launching this spring.

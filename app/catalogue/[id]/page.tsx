@@ -34,10 +34,10 @@ export default function LotDetailPage() {
     : [{ image_url: `/placeholder.svg?height=800&width=800&query=fine+art+${lot.artist}`, is_primary: true }]
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background ">
       <PublicHeader />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 text-muted-foreground">
         <Button variant="ghost" asChild className="mb-6">
           <Link href="/catalogue">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -83,7 +83,7 @@ export default function LotDetailPage() {
 
             <div className="flex gap-2">
               <Badge variant="outline">{lot.triage_status}</Badge>
-              <Badge>{lot.status}</Badge>
+              {/* <Badge>{lot.status}</Badge> */}
             </div>
 
             {/* Specifications */}
@@ -92,7 +92,7 @@ export default function LotDetailPage() {
                 <div className="flex items-start gap-3">
                   <Ruler className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-foreground">Dimensions</p>
+                    <p className="text-sm font-medium text-muted-foreground">Dimensions</p>
                     <p className="text-sm text-muted-foreground">{lot.dimensions}</p>
                   </div>
                 </div>
@@ -101,7 +101,7 @@ export default function LotDetailPage() {
                 <div className="flex items-start gap-3">
                   <Frame className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-foreground">Framing</p>
+                    <p className="text-sm font-medium text-muted-foreground">Framing</p>
                     <p className="text-sm text-muted-foreground">{lot.framing_details}</p>
                   </div>
                 </div>
@@ -111,7 +111,7 @@ export default function LotDetailPage() {
             {/* Description */}
             {lot.description && (
               <div>
-                <h3 className="text-lg font-semibold mb-2 text-foreground">Description</h3>
+                <h3 className="text-lg font-semibold mb-2 text-muted-foreground">Description</h3>
                 <p className="text-muted-foreground leading-relaxed">{lot.description}</p>
               </div>
             )}
