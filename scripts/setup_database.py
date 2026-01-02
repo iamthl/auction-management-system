@@ -1,6 +1,12 @@
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import os
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
 def init_database():
     """Initialize SQLite database with schema for Fotherby's Auction House"""
@@ -9,6 +15,7 @@ def init_database():
     os.makedirs('data', exist_ok=True)
     
     conn = sqlite3.connect('data/fotherbys.db')
+    conn.execute("PRAGMA foreign_keys = ON")
     cursor = conn.cursor()
     
     # Auctions Table
@@ -20,7 +27,7 @@ def init_database():
         auction_date DATE NOT NULL,
         start_time TEXT NOT NULL CHECK(start_time IN ('9:30am', '2:00pm', '7:00pm')),
         theme TEXT,
-        auction_type TEXT DEFAULT 'Live' CHECK(auction_type IN ('Live', 'Online')),
+        auction_type TEXT DEFAULT 'Physical' CHECK(auction_type IN ('Physical', 'Online')),
         status TEXT DEFAULT 'Upcoming' CHECK(status IN ('Upcoming', 'Completed', 'Cancelled')),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -117,12 +124,16 @@ def init_database():
 
 def seed_data(cursor, conn):
     """Seed database with comprehensive mock data"""
+
+    admin_hash = get_password_hash("admin123")
     
     cursor.execute('''
     INSERT OR IGNORE INTO clients (name, email, password_hash, client_type, is_staff)
     VALUES (?, ?, ?, ?, ?)
-    ''', ('Admin Staff', 'admin@fotherbys.com', 'hashed_password_here', 'Joint', 1))
-    
+    ''', ('Admin Staff', 'admin@fotherbys.com', admin_hash, 'Joint', 1))
+
+    default_user_hash = get_password_hash("seller123")
+
     sellers = [
         ('Lady Victoria Pembroke', 'victoria@pembroke-estate.co.uk', '+44 20 7946 0958', 'Pembroke Manor, Hampshire'),
         ('Count Alessandro di Medici', 'alessandro@medici-collection.it', '+39 055 123 4567', 'Palazzo Medici, Florence'),
@@ -134,18 +145,17 @@ def seed_data(cursor, conn):
         cursor.execute('''
         INSERT OR IGNORE INTO clients (name, email, password_hash, phone, address, client_type)
         VALUES (?, ?, ?, ?, ?, ?)
-        ''', (name, email, 'hashed_password', phone, address, 'Seller'))
+        ''', (name, email, default_user_hash, phone, address, 'Seller'))
     
-    from datetime import date, timedelta
     today = date.today()
     
     auctions_data = [
-        ('21st Century English Paintings', 'London', today + timedelta(days=30), '7:00pm', 'Contemporary British Art', 'Live', 'Upcoming'),
-        ('Impressionist & Modern Art', 'Paris', today + timedelta(days=45), '2:00pm', 'European Masters', 'Live', 'Upcoming'),
+        ('21st Century English Paintings', 'London', today + timedelta(days=30), '7:00pm', 'Contemporary British Art', 'Physical', 'Upcoming'),
+        ('Impressionist & Modern Art', 'Paris', today + timedelta(days=45), '2:00pm', 'European Masters', 'Physical', 'Upcoming'),
         ('Contemporary Art Online', 'London', today + timedelta(days=15), '9:30am', 'Digital Premiere', 'Online', 'Upcoming'),
-        ('Old Masters', 'New York', today + timedelta(days=60), '7:00pm', 'Renaissance to Baroque', 'Live', 'Upcoming'),
-        ('Victorian & Edwardian Art', 'London', today - timedelta(days=15), '2:00pm', 'British Classics', 'Live', 'Completed'),
-        ('Abstract Expressionism', 'New York', today - timedelta(days=30), '7:00pm', 'Post-War American Art', 'Live', 'Completed'),
+        ('Old Masters', 'New York', today + timedelta(days=60), '7:00pm', 'Renaissance to Baroque', 'Physical', 'Upcoming'),
+        ('Victorian & Edwardian Art', 'London', today - timedelta(days=15), '2:00pm', 'British Classics', 'Physical', 'Completed'),
+        ('Abstract Expressionism', 'New York', today - timedelta(days=30), '7:00pm', 'Post-War American Art', 'Physical', 'Completed'),
     ]
     
     for auction in auctions_data:
@@ -244,7 +254,7 @@ def seed_data(cursor, conn):
             INSERT INTO lots (lot_reference, auction_id, artist, title, category, dimensions, 
                               framing_details, year_of_production, description,
                               estimate_low, estimate_high, reserve_price, triage_status, status, seller_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', lot)
     
     conn.commit()
