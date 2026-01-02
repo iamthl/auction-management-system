@@ -47,12 +47,12 @@ def create_mock_data():
     
     # Create auctions
     auctions_data = [
-        ("21st Century British Art", "London", (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d"), "7:00pm", "Live", "Contemporary British artists including landscapes and portraits"),
-        ("Post-War European Masters", "Paris", (datetime.now() + timedelta(days=45)).strftime("%Y-%m-%d"), "7:00pm", "Live", "Major works from post-war European artists"),
-        ("Modern American Art", "New York", (datetime.now() + timedelta(days=60)).strftime("%Y-%m-%d"), "2:00pm", "Live", "Significant American artworks from 1950-2000"),
+        ("21st Century British Art", "London", (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d"), "7:00pm", "Physical", "Contemporary British artists including landscapes and portraits"),
+        ("Post-War European Masters", "Paris", (datetime.now() + timedelta(days=45)).strftime("%Y-%m-%d"), "7:00pm", "Physical", "Major works from post-war European artists"),
+        ("Modern American Art", "New York", (datetime.now() + timedelta(days=60)).strftime("%Y-%m-%d"), "2:00pm", "Physical", "Significant American artworks from 1950-2000"),
         ("Online Fine Art Sale", "London", (datetime.now() + timedelta(days=15)).strftime("%Y-%m-%d"), "9:30am", "Online", "Accessible fine art for emerging collectors"),
-        ("Impressionist & Modern Art", "London", (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d"), "7:00pm", "Live", "Evening sale of impressionist masterpieces (PAST)"),
-        ("Contemporary Sculpture", "Paris", (datetime.now() - timedelta(days=45)).strftime("%Y-%m-%d"), "2:00pm", "Live", "Three-dimensional artworks by leading sculptors (PAST)"),
+        ("Impressionist & Modern Art", "London", (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d"), "7:00pm", "Physical", "Evening sale of impressionist masterpieces (PAST)"),
+        ("Contemporary Sculpture", "Paris", (datetime.now() - timedelta(days=45)).strftime("%Y-%m-%d"), "2:00pm", "Physical", "Three-dimensional artworks by leading sculptors (PAST)"),
     ]
     
     auction_ids = []
@@ -189,7 +189,7 @@ def create_mock_data():
             if lot["estimate_low"] < 20000:
                 auction_id = auction_ids[3]  # Online sale
             else:
-                auction_id = auction_ids[0]  # London live
+                auction_id = auction_ids[0]  # London 
         elif lot["category"] == "Photography":
             auction_id = auction_ids[3]  # Online sale
         else:

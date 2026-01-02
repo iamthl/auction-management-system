@@ -7,7 +7,7 @@ export interface Auction {
   auction_date: string
   start_time: "9:30am" | "2:00pm" | "7:00pm"
   theme?: string
-  auction_type: "Live" | "Online"
+  auction_type: "Physical" | "Online"
   status: "Upcoming" | "Completed" | "Cancelled"
   created_at: string
 }
