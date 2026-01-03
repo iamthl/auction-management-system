@@ -711,7 +711,9 @@ def search_catalogue(
         SELECT l.*, a.title as auction_title, a.auction_type, a.location, a.auction_date
         FROM lots l
         LEFT JOIN auctions a ON l.auction_id = a.id
-        WHERE l.status = "Listed"
+        WHERE l.status = "Listed" 
+        AND (l.is_archived = 0 OR l.is_archived IS NULL)
+        AND (a.is_archived = 0 OR a.is_archived IS NULL)
     '''
     params = []
     

@@ -29,6 +29,15 @@ export default function LotDetailPage() {
     )
   }
 
+  if (lot.status === "Archived") {
+    return (
+      <div className="min-h-screen bg-background">
+        <PublicHeader />
+        <div className="text-center py-12">Lot not found</div>
+      </div>
+    )
+  }
+
   const images = lot.images?.length
     ? lot.images
     : [{ image_url: `/placeholder.svg?height=800&width=800&query=fine+art+${lot.artist}`, is_primary: true }]
@@ -145,7 +154,7 @@ export default function LotDetailPage() {
             )}
 
             <div className="flex gap-3 pt-4">
-              <Button size="lg" className="flex-1" disabled>
+              <Button size="lg" className="flex-1">
                 Register to Bid
               </Button>
               <Button size="lg" variant="outline" className="flex-1 bg-transparent">

@@ -76,7 +76,7 @@ export default function AuctionDetailPage() {
     )
   }
 
-  if (!auction) {
+  if (!auction || auction.is_archived) {
     return (
       <div className="min-h-screen bg-background">
         <PublicHeader />
