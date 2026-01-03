@@ -54,6 +54,7 @@ def init_database():
         commission_bids BOOLEAN DEFAULT 0,
         triage_status TEXT NOT NULL CHECK(triage_status IN ('Physical', 'Online')),
         status TEXT DEFAULT 'Pending' CHECK(status IN ('Pending', 'Listed', 'Sold', 'Unsold', 'Withdrawn')),
+        is_archived BOOLEAN DEFAULT 0,
         withdrawn_date DATE,
         withdrawal_fee REAL DEFAULT 0,
         seller_id INTEGER,

@@ -1,26 +1,41 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { api, type Auction, type Lot } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus, Upload, Lightbulb, Calendar, DollarSign } from "lucide-react"
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from "@/components/ui/alert-dialog"
+import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function LotsPage() {
   const [lots, setLots] = useState<Lot[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
+  const [viewMode, setViewMode] = useState<"active" | "archived">("active")
   const [showForm, setShowForm] = useState(false)
   const [selectedLot, setSelectedLot] = useState<Lot | null>(null)
+  
+  // Edit & Delete State
+  const [editingLot, setEditingLot] = useState<Lot | null>(null)
+  
   const [assignAuctionId, setAssignAuctionId] = useState("")
   const [triageSuggestion, setTriageSuggestion] = useState<any>(null)
   const [commission, setCommission] = useState<any>(null)
@@ -44,7 +59,7 @@ export default function LotsPage() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [viewMode])
 
   useEffect(() => {
     if (formData.estimate_low && Number.parseFloat(formData.estimate_low) > 0) {
@@ -59,34 +74,70 @@ export default function LotsPage() {
   }, [salePrice])
 
   const loadData = () => {
-    Promise.all([api.getLots(), api.getAuctions()]).then(([lotsData, auctionsData]) => {
+    Promise.all([
+        api.getLots({ archived_only: viewMode === "archived" }), 
+        api.getAuctions()
+    ]).then(([lotsData, auctionsData]) => {
       setLots(lotsData)
       setAuctions(auctionsData)
     })
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       const newLot = await api.createLot({
         ...formData,
+        lot_reference: formData.lot_number,
         estimate_low: Number.parseFloat(formData.estimate_low),
         estimate_high: Number.parseFloat(formData.estimate_high),
         reserve_price: Number.parseFloat(formData.reserve_price),
-        year: formData.year ? Number.parseInt(formData.year) : undefined,
+        year_of_production: formData.year ? Number.parseInt(formData.year) : undefined,
       } as any)
 
-      // Upload images if provided
       if (imageFiles && imageFiles.length > 0) {
         for (let i = 0; i < imageFiles.length; i++) {
           await api.uploadLotImage(newLot.id, imageFiles[i], i === 0)
         }
-        toast({ title: "Lot created with images and thumbnails" })
-      } else {
-        toast({ title: "Lot created successfully" })
       }
-
+      
+      toast({ title: "Lot created successfully" })
       setShowForm(false)
+      resetForm()
+      loadData()
+    } catch (error) {
+      toast({ variant: "destructive", title: "Failed to create lot" })
+    }
+  }
+
+  const handleUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingLot) return
+    try {
+        await api.updateLot(editingLot.id, {
+            ...formData,
+            lot_reference: formData.lot_number,
+            estimate_low: Number.parseFloat(formData.estimate_low),
+            estimate_high: Number.parseFloat(formData.estimate_high),
+            reserve_price: Number.parseFloat(formData.reserve_price),
+            year_of_production: formData.year ? Number.parseInt(formData.year) : undefined,
+        } as any)
+        
+        if (imageFiles && imageFiles.length > 0) {
+            for (let i = 0; i < imageFiles.length; i++) {
+                await api.uploadLotImage(editingLot.id, imageFiles[i], false)
+            }
+        }
+        
+        setEditingLot(null)
+        loadData()
+        toast({ title: "Lot updated successfully" })
+    } catch (error) {
+        toast({ variant: "destructive", title: "Failed to update lot" })
+    }
+  }
+
+  const resetForm = () => {
       setFormData({
         lot_number: "",
         artist: "",
@@ -101,9 +152,69 @@ export default function LotsPage() {
         triage_status: "Physical",
       })
       setImageFiles(null)
-      loadData()
+  }
+
+  const startEditing = (lot: Lot) => {
+      setEditingLot(lot)
+      setFormData({
+        lot_number: lot.lot_reference,
+        artist: lot.artist,
+        title: lot.title,
+        year: lot.year_of_production?.toString() || "",
+        category: lot.category,
+        subject: "Landscape", 
+        description: lot.description || "",
+        estimate_low: lot.estimate_low.toString(),
+        estimate_high: lot.estimate_high.toString(),
+        reserve_price: lot.reserve_price.toString(),
+        triage_status: lot.triage_status,
+      })
+      setImageFiles(null)
+  }
+
+  const handleDelete = async (id: number) => {
+      try {
+          await api.deleteLot(id)
+          loadData()
+          toast({ title: "Lot deleted" })
+      } catch (error) {
+          toast({ variant: "destructive", title: "Failed to delete lot" })
+      }
+  }
+  
+  const handleDeleteImage = async (imageId: number) => {
+      try {
+          await api.deleteLotImage(imageId)
+          if (editingLot) {
+              setEditingLot({
+                  ...editingLot,
+                  images: editingLot.images.filter(img => img.id !== imageId)
+              })
+          }
+          loadData() 
+          toast({ title: "Image deleted" })
+      } catch (error) {
+          toast({ variant: "destructive", title: "Failed to delete image" })
+      }
+  }
+
+  const handleArchive = async (id: number) => {
+      try {
+          await api.archiveLot(id)
+          loadData()
+          toast({ title: "Lot archived" })
+      } catch (error) {
+          toast({ variant: "destructive", title: "Failed to archive lot" })
+      }
+  }
+
+  const handleRestore = async (id: number) => {
+    try {
+        await api.unarchiveLot(id)
+        loadData()
+        toast({ title: "Lot restored", description: "Lot moved back to pending list." })
     } catch (error) {
-      toast({ variant: "destructive", title: "Failed to create lot" })
+        toast({ variant: "destructive", title: "Failed to restore lot" })
     }
   }
 
@@ -121,19 +232,6 @@ export default function LotsPage() {
     }
   }
 
-  const handleImageUpload = async (lotId: number, files: FileList | null) => {
-    if (!files) return
-    try {
-      for (let i = 0; i < files.length; i++) {
-        await api.uploadLotImage(lotId, files[i], i === 0)
-      }
-      loadData()
-      toast({ title: "Images uploaded with thumbnails generated" })
-    } catch (error) {
-      toast({ variant: "destructive", title: "Failed to upload images" })
-    }
-  }
-
   const handleCompleteSale = async (lotId: number) => {
     if (!salePrice || Number.parseFloat(salePrice) <= 0) return
     try {
@@ -141,95 +239,92 @@ export default function LotsPage() {
       setSalePrice("")
       setCommission(null)
       loadData()
-      toast({ title: "Sale completed with commission calculated" })
+      toast({ title: "Sale completed" })
     } catch (error) {
       toast({ variant: "destructive", title: "Failed to complete sale" })
     }
   }
 
-  return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-serif font-bold">Lots Management</h1>
-          <p className="text-muted-foreground mt-1">Create and manage auction inventory</p>
+  const LotForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void, submitLabel: string }) => (
+    <form onSubmit={onSubmit} className="space-y-4">
+      {editingLot && editingLot.images && editingLot.images.length > 0 && (
+          <div className="space-y-2">
+            <Label>Current Images</Label>
+            <div className="grid grid-cols-4 gap-2 border p-2 rounded bg-muted/20">
+                {editingLot.images.map(img => (
+                   <div key={img.id} className="relative group aspect-square bg-background rounded overflow-hidden border">
+                     <img 
+                        src={img.thumbnail_url || img.image_url} 
+                        className="w-full h-full object-cover" 
+                        alt="lot"
+                     />
+                     <button 
+                        type="button" 
+                        onClick={() => handleDeleteImage(img.id)} 
+                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                     >
+                       <X className="h-3 w-3" />
+                     </button>
+                   </div>
+                ))}
+            </div>
+          </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Lot Number</Label>
+          <Input
+            value={formData.lot_number}
+            onChange={(e) => setFormData({ ...formData, lot_number: e.target.value })}
+            placeholder="10000001"
+            required
+          />
         </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Lot
-        </Button>
-      </div>
-
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Lot</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Lot Number (8 digits)</Label>
-                  <Input
-                    value={formData.lot_number}
-                    onChange={(e) => setFormData({ ...formData, lot_number: e.target.value })}
-                    placeholder="10000001"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Artist</Label>
-                  <Input
-                    value={formData.artist}
-                    onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
-                    placeholder="David Hockney"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Title</Label>
-                  <Input
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Year</Label>
-                  <Input
-                    type="number"
-                    value={formData.year}
-                    onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                    placeholder="2024"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Painting">Painting</SelectItem>
-                      <SelectItem value="Drawing">Drawing</SelectItem>
-                      <SelectItem value="Sculpture">Sculpture</SelectItem>
-                      <SelectItem value="Photography">Photography</SelectItem>
-                      <SelectItem value="Carving">Carving</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Subject</Label>
-                  <Select value={formData.subject} onValueChange={(v) => setFormData({ ...formData, subject: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
+        <div className="space-y-2">
+          <Label>Artist</Label>
+          <Input
+            value={formData.artist}
+            onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Title</Label>
+          <Input
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Year</Label>
+          <Input
+            type="number"
+            value={formData.year}
+            onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Category</Label>
+          <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Painting">Painting</SelectItem>
+              <SelectItem value="Drawing">Drawing</SelectItem>
+              <SelectItem value="Sculpture">Sculpture</SelectItem>
+              <SelectItem value="Photography">Photography</SelectItem>
+              <SelectItem value="Carving">Carving</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Subject</Label>
+            <Select value={formData.subject} onValueChange={(v) => setFormData({ ...formData, subject: v })}>
+              <SelectTrigger>
+              <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
                       <SelectItem value="Landscape">Landscape</SelectItem>
                       <SelectItem value="Seascape">Seascape</SelectItem>
                       <SelectItem value="Portrait">Portrait</SelectItem>
@@ -238,126 +333,140 @@ export default function LotsPage() {
                       <SelectItem value="Nude">Nude</SelectItem>
                       <SelectItem value="Animal">Animal</SelectItem>
                       <SelectItem value="Abstract">Abstract</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                </SelectContent>
+            </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Estimate Low (£)</Label>
+          <Input
+            type="number"
+            value={formData.estimate_low}
+            onChange={(e) => setFormData({ ...formData, estimate_low: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Estimate High (£)</Label>
+          <Input
+            type="number"
+            value={formData.estimate_high}
+            onChange={(e) => setFormData({ ...formData, estimate_high: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Reserve Price (£)</Label>
+          <Input
+            type="number"
+            value={formData.reserve_price}
+            onChange={(e) => setFormData({ ...formData, reserve_price: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+            <Label>Triage Status</Label>
+            <Select
+            value={formData.triage_status}
+            onValueChange={(v) => setFormData({ ...formData, triage_status: v as any })}
+            >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+                <SelectItem value="Physical">Physical (Premium)</SelectItem>
+                <SelectItem value="Online">Online (Standard)</SelectItem>
+            </SelectContent>
+            </Select>
+        </div>
+        <div className="space-y-2 md:col-span-2">
+            <Label>Description</Label>
+            <Textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            rows={4}
+            />
+        </div>
+        
+        {/* Image Upload Input */}
+        <div className="space-y-2 md:col-span-2">
+          <Label>{editingLot ? "Upload New Images" : "Images"}</Label>
+          <Input
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={(e) => setImageFiles(e.target.files)}
+          />
+          {editingLot && <p className="text-xs text-muted-foreground">New images will be added to the existing ones.</p>}
+        </div>
 
-                <div className="space-y-2">
-                  <Label>Estimate Low (£)</Label>
-                  <Input
-                    type="number"
-                    value={formData.estimate_low}
-                    onChange={(e) => setFormData({ ...formData, estimate_low: e.target.value })}
-                    required
-                  />
-                </div>
+      </div>
+      <div className="flex gap-2">
+        <Button type="submit">{submitLabel}</Button>
+        <Button type="button" variant="outline" onClick={() => editingLot ? setEditingLot(null) : setShowForm(false)}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  )
 
-                <div className="space-y-2">
-                  <Label>Estimate High (£)</Label>
-                  <Input
-                    type="number"
-                    value={formData.estimate_high}
-                    onChange={(e) => setFormData({ ...formData, estimate_high: e.target.value })}
-                    required
-                  />
-                </div>
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-serif font-bold">Lots Management</h1>
+          <p className="text-muted-foreground mt-1">Create and manage lot items</p>
+        </div>
+        {viewMode === "active" && (
+            <Button onClick={() => { resetForm(); setShowForm(!showForm); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Lot
+            </Button>
+        )}
+      </div>
 
-                <div className="space-y-2">
-                  <Label>Reserve Price (£)</Label>
-                  <Input
-                    type="number"
-                    value={formData.reserve_price}
-                    onChange={(e) => setFormData({ ...formData, reserve_price: e.target.value })}
-                    required
-                  />
-                </div>
+      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-full">
+        <TabsList>
+            <TabsTrigger value="active" className="text-muted-foreground">Active</TabsTrigger>
+            <TabsTrigger value="archived" className="text-muted-foreground">Archived</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-                <div className="space-y-2">
-                  <Label>Triage Status (Staff can override)</Label>
-                  <Select
-                    value={formData.triage_status}
-                    onValueChange={(v) => setFormData({ ...formData, triage_status: v as any })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Physical">Physical (Premium)</SelectItem>
-                      <SelectItem value="Online">Online (Standard)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {triageSuggestion && (
-                    <Alert className="mt-2">
-                      <Lightbulb className="h-4 w-4" />
-                      <AlertDescription>
-                        <strong>Suggested: {triageSuggestion.suggested_triage}</strong>
-                        <br />
-                        <span className="text-xs">{triageSuggestion.reason}</span>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Lot Images (Auto Thumbnail Generation)</Label>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center space-y-2">
-                    <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Upload lot photos</p>
-                      <p className="text-xs text-muted-foreground">
-                        System will automatically create 300x300px thumbnails for list views
-                      </p>
-                    </div>
-                    <Input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => setImageFiles(e.target.files)}
-                      className="max-w-xs mx-auto"
-                    />
-                    {imageFiles && imageFiles.length > 0 && (
-                      <p className="text-sm text-green-600">
-                        {imageFiles.length} image{imageFiles.length > 1 ? "s" : ""} selected
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="submit">Create Lot</Button>
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
+      {showForm && (
+        <Card>
+          <CardHeader><CardTitle>Create New Lot</CardTitle></CardHeader>
+          <CardContent>
+            <LotForm onSubmit={handleCreateSubmit} submitLabel="Create Lot" />
           </CardContent>
         </Card>
       )}
 
+      {/* Edit Dialog */}
+      <Dialog open={!!editingLot} onOpenChange={(open) => !open && setEditingLot(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Edit Lot</DialogTitle>
+          </DialogHeader>
+          <LotForm onSubmit={handleUpdateSubmit} submitLabel="Save Changes" />
+        </DialogContent>
+      </Dialog>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {lots.length === 0 && (
+            <div className="col-span-full text-center py-10 text-muted-foreground">
+                No {viewMode} lots found.
+            </div>
+        )}
         {lots.map((lot) => (
-          <Card key={lot.id}>
+          <Card key={lot.id} className="flex flex-col">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
                   <CardTitle className="text-base">{lot.artist}</CardTitle>
                   <p className="text-sm text-muted-foreground italic">{lot.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{lot.lot_number}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{lot.lot_reference}</p>
                 </div>
                 <Badge variant={lot.status === "Sold" ? "secondary" : "outline"}>{lot.status}</Badge>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
               <div className="space-y-3">
                 {lot.images?.[0] && (
                   <div className="aspect-square bg-muted rounded overflow-hidden">
@@ -368,133 +477,131 @@ export default function LotsPage() {
                     />
                   </div>
                 )}
-
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Estimate:</span>
-                    <span>
-                      £{lot.estimate_low.toLocaleString()} - £{lot.estimate_high.toLocaleString()}
-                    </span>
+                    <span>£{lot.estimate_low.toLocaleString()} - £{lot.estimate_high.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Stream:</span>
                     <Badge variant="outline">{lot.triage_status}</Badge>
                   </div>
-                  {lot.sold_price && (
-                    <div className="flex justify-between text-green-600 font-medium">
-                      <span>Sold:</span>
-                      <span>£{lot.sold_price.toLocaleString()}</span>
-                    </div>
-                  )}
                 </div>
-
-                {lot.status === "Pending" && (
-                  <div className="space-y-2">
-                    <Label className="cursor-pointer">
-                      <div className="flex items-center justify-center gap-2 p-2 border border-dashed rounded hover:bg-muted">
-                        <Upload className="h-4 w-4" />
-                        <span className="text-sm">Upload Images (Auto Thumbnail)</span>
-                      </div>
-                      <Input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleImageUpload(lot.id, e.target.files)}
-                      />
-                    </Label>
-
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" className="w-full" onClick={() => setSelectedLot(lot)}>
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Assign to Auction
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Assign Lot to Auction</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <Select value={assignAuctionId} onValueChange={setAssignAuctionId}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select auction..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {auctions
-                                .filter((a) => a.status === "Upcoming")
-                                .map((auction) => (
-                                  <SelectItem key={auction.id} value={String(auction.id)}>
-                                    {auction.title} - {new Date(auction.date).toLocaleDateString()} (
-                                    {auction.auction_type})
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                          <Button onClick={handleAssignAuction} className="w-full">
-                            Assign Lot
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                )}
-
-                {lot.status === "Listed" && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="secondary" className="w-full">
-                        <DollarSign className="h-4 w-4 mr-2" />
-                        Complete Sale
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Complete Sale (Auto Commission Calc)</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Hammer Price (£)</Label>
-                          <Input
-                            type="number"
-                            value={salePrice}
-                            onChange={(e) => setSalePrice(e.target.value)}
-                            placeholder="Enter final bid"
-                          />
-                        </div>
-
-                        {commission && (
-                          <Alert>
-                            <AlertDescription className="space-y-1 text-sm">
-                              <div className="flex justify-between font-medium">
-                                <span>Hammer Price:</span>
-                                <span>£{commission.hammer_price.toLocaleString()}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Buyer Premium (10%):</span>
-                                <span>£{commission.buyers_premium.toLocaleString()}</span>
-                              </div>
-                              <div className="flex justify-between font-semibold">
-                                <span>Total Buyer Pays:</span>
-                                <span>£{commission.total_buyer_pays.toLocaleString()}</span>
-                              </div>
-                              <div className="flex justify-between pt-2 border-t">
-                                <span>Seller Receives:</span>
-                                <span>£{commission.total_seller_receives.toLocaleString()}</span>
-                              </div>
-                            </AlertDescription>
-                          </Alert>
-                        )}
-
-                        <Button onClick={() => handleCompleteSale(lot.id)} className="w-full" disabled={!salePrice}>
-                          Complete Sale
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
               </div>
             </CardContent>
+            <CardFooter className="flex flex-col gap-2 border-t pt-4">
+               
+               {viewMode === "active" ? (
+                   <>
+                    <div className="flex w-full gap-2">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => startEditing(lot)}>
+                            <Pencil className="h-3 w-3 mr-1" /> Edit
+                        </Button>
+                        
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button size="sm" className="flex-1">
+                                    <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete this lot. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(lot.id)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+                    
+                    <div className="flex w-full gap-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleArchive(lot.id)}>
+                      <Archive className="h-3 w-3 mr-1" /> Archive
+                        </Button>
+                        {lot.status === "Pending" && (
+                            <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedLot(lot)}>
+                                <Calendar className="h-4 w-4 mr-2" /> Auction
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader><DialogTitle>Assign Auction</DialogTitle></DialogHeader>
+                                <div className="space-y-4">
+                                <Select value={assignAuctionId} onValueChange={setAssignAuctionId}>
+                                    <SelectTrigger><SelectValue placeholder="Select auction..." /></SelectTrigger>
+                                    <SelectContent>
+                                    {auctions.filter((a) => a.status === "Upcoming").map((auction) => (
+                                        <SelectItem key={auction.id} value={String(auction.id)}>{auction.title}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Button onClick={handleAssignAuction} className="w-full">Assign</Button>
+                                </div>
+                            </DialogContent>
+                            </Dialog>
+                        )}
+                    </div>
+
+                        {/* Specific Status Actions */}
+                        {/* {lot.status === "Pending" && (
+                        <div className="w-full pt-2 space-y-2 border-t mt-2">
+                            <Dialog>
+                            <DialogTrigger asChild>
+                                <Button size="sm" className="flex-1" onClick={() => setSelectedLot(lot)}>
+                                <Calendar className="h-4 w-4 mr-2" /> Assign Auction
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader><DialogTitle>Assign Lot</DialogTitle></DialogHeader>
+                                <div className="space-y-4">
+                                <Select value={assignAuctionId} onValueChange={setAssignAuctionId}>
+                                    <SelectTrigger><SelectValue placeholder="Select auction..." /></SelectTrigger>
+                                    <SelectContent>
+                                    {auctions.filter((a) => a.status === "Upcoming").map((auction) => (
+                                        <SelectItem key={auction.id} value={String(auction.id)}>{auction.title}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Button onClick={handleAssignAuction} className="w-full">Assign</Button>
+                                </div>
+                            </DialogContent>
+                            </Dialog>
+                        </div>
+                        )} */}
+                   </>
+               ) : (
+                    <div className="flex w-full gap-2">
+                       <Button variant="outline" size="sm" className="flex-1" onClick={() => handleRestore(lot.id)}>
+                           <RefreshCcw className="h-3 w-3 mr-1" /> Restore Lot
+                       </Button>
+                       <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" className="flex-1">
+                                    <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Permanently Delete?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently remove this lot from the database.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(lot.id)}>Delete Permanently</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+               )}
+            </CardFooter>
           </Card>
         ))}
       </div>

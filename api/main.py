@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Form, status
+from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Form, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr
@@ -50,6 +50,30 @@ def get_db():
     finally:
         conn.close()
 
+# Database Migration 
+@app.on_event("startup")
+def startup_event():
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    DB_PATH = BASE_DIR / "data" / "fotherbys.db"
+    conn = sqlite3.connect(str(DB_PATH))
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("ALTER TABLE auctions ADD COLUMN is_archived INTEGER DEFAULT 0")
+        conn.commit()
+        print("Migrated auctions table: Added is_archived column.")
+    except sqlite3.OperationalError:
+        pass 
+
+    try:
+        cursor.execute("ALTER TABLE lots ADD COLUMN is_archived INTEGER DEFAULT 0")
+        conn.commit()
+        print("Migrated lots table: Added is_archived column.")
+    except sqlite3.OperationalError:
+        pass 
+        
+    conn.close()
+
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -93,10 +117,19 @@ class AuctionCreate(BaseModel):
     auction_type: str = "Physical"
     theme: Optional[str] = None
 
+class AuctionUpdate(BaseModel):
+    title: Optional[str] = None
+    location: Optional[str] = None
+    auction_date: Optional[date] = None
+    start_time: Optional[str] = None
+    auction_type: Optional[str] = None
+    theme: Optional[str] = None
+
 class AuctionResponse(AuctionCreate):
     id: int
     status: str
     created_at: str
+    is_archived: Optional[bool] = False
 
 class LotCreate(BaseModel):
     lot_reference: str
@@ -113,6 +146,20 @@ class LotCreate(BaseModel):
     triage_status: str = "Physical"
     seller_id: Optional[int] = None
 
+class LotUpdate(BaseModel):
+    lot_reference: Optional[str] = None
+    artist: Optional[str] = None
+    title: Optional[str] = None
+    year_of_production: Optional[int] = None
+    category: Optional[str] = None
+    dimensions: Optional[str] = None
+    framing_details: Optional[str] = None
+    description: Optional[str] = None
+    estimate_low: Optional[float] = None
+    estimate_high: Optional[float] = None
+    reserve_price: Optional[float] = None
+    triage_status: Optional[str] = None
+
 class LotResponse(LotCreate):
     id: int
     sold_price: Optional[float] = None
@@ -124,6 +171,7 @@ class LotResponse(LotCreate):
     location: Optional[str] = None
     auction_date: Optional[str] = None
     start_time: Optional[str] = None
+    status: str
 
 class Token(BaseModel):
     access_token: str
@@ -131,6 +179,7 @@ class Token(BaseModel):
     user_type: str
     is_staff: bool
     name: str
+    email: Optional[str] = None
 
 class ClientRegister(BaseModel):
     name: str
@@ -172,7 +221,8 @@ def register(client: ClientRegister, db: sqlite3.Connection = Depends(get_db)):
         "token_type": "bearer",
         "user_type": client.client_type,
         "is_staff": False,
-        "name": client.name
+        "name": client.name,
+        "email": client.email
     }
 
 @app.post("/api/auth/token", response_model=Token)
@@ -195,7 +245,8 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         "token_type": "bearer",
         "user_type": user['client_type'],
         "is_staff": bool(user['is_staff']),
-        "name": user['name']
+        "name": user['name'],
+        "email": user['email']
     }
 
 @app.get("/api/users/me")
@@ -216,8 +267,8 @@ def create_auction(
         
     cursor = db.cursor()
     cursor.execute('''
-        INSERT INTO auctions (title, location, auction_date, start_time, auction_type, theme)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO auctions (title, location, auction_date, start_time, auction_type, theme, is_archived)
+        VALUES (?, ?, ?, ?, ?, ?, 0)
     ''', (auction.title, auction.location, str(auction.auction_date), auction.start_time, auction.auction_type, auction.theme))
     db.commit()
     
@@ -226,12 +277,21 @@ def create_auction(
     return dict(cursor.fetchone())
 
 @app.get("/api/auctions", response_model=List[AuctionResponse])
-def get_auctions(status: Optional[str] = None, db: sqlite3.Connection = Depends(get_db)):
+def get_auctions(
+    status: Optional[str] = None, 
+    archived_only: bool = False, 
+    db: sqlite3.Connection = Depends(get_db)
+):
     cursor = db.cursor()
     query = 'SELECT *, CASE WHEN auction_date >= date("now") THEN "Upcoming" ELSE "Completed" END as status FROM auctions WHERE 1=1'
     params = []
     
-    if status:
+    if archived_only:
+        query += ' AND is_archived = 1'
+    else:
+        query += ' AND (is_archived = 0 OR is_archived IS NULL)'
+
+    if status and not archived_only:
         if status == "Upcoming": query += ' AND auction_date >= date("now")'
         elif status == "Completed": query += ' AND auction_date < date("now")'
     
@@ -246,6 +306,80 @@ def get_auction(auction_id: int, db: sqlite3.Connection = Depends(get_db)):
     result = cursor.fetchone()
     if not result: raise HTTPException(status_code=404, detail="Auction not found")
     return dict(result)
+
+@app.put("/api/auctions/{auction_id}", response_model=AuctionResponse)
+def update_auction(
+    auction_id: int,
+    auction_update: AuctionUpdate,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can update auctions")
+    
+    cursor = db.cursor()
+    cursor.execute("SELECT * FROM auctions WHERE id = ?", (auction_id,))
+    if not cursor.fetchone():
+        raise HTTPException(status_code=404, detail="Auction not found")
+
+    update_data = auction_update.dict(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+
+    set_clause = ", ".join([f"{k} = ?" for k in update_data.keys()])
+    values = list(update_data.values()) + [auction_id]
+    
+    cursor.execute(f"UPDATE auctions SET {set_clause} WHERE id = ?", values)
+    db.commit()
+    
+    cursor.execute('SELECT *, CASE WHEN auction_date >= date("now") THEN "Upcoming" ELSE "Completed" END as status FROM auctions WHERE id = ?', (auction_id,))
+    return dict(cursor.fetchone())
+
+@app.delete("/api/auctions/{auction_id}")
+def delete_auction(
+    auction_id: int,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can delete auctions")
+    
+    cursor = db.cursor()
+    cursor.execute("SELECT COUNT(*) FROM lots WHERE auction_id = ?", (auction_id,))
+    if cursor.fetchone()[0] > 0:
+        raise HTTPException(status_code=400, detail="Cannot delete auction with assigned lots. Archive it instead.")
+        
+    cursor.execute("DELETE FROM auctions WHERE id = ?", (auction_id,))
+    db.commit()
+    return {"message": "Auction deleted"}
+
+@app.put("/api/auctions/{auction_id}/archive")
+def archive_auction(
+    auction_id: int,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can archive auctions")
+    
+    cursor = db.cursor()
+    cursor.execute("UPDATE auctions SET is_archived = 1 WHERE id = ?", (auction_id,))
+    db.commit()
+    return {"message": "Auction archived"}
+
+@app.put("/api/auctions/{auction_id}/unarchive")
+def unarchive_auction(
+    auction_id: int,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can restore auctions")
+    
+    cursor = db.cursor()
+    cursor.execute("UPDATE auctions SET is_archived = 0 WHERE id = ?", (auction_id,))
+    db.commit()
+    return {"message": "Auction restored"}
 
 @app.post("/api/auctions/{auction_id}/generate-pdf")
 def generate_auction_pdf(auction_id: int, db: sqlite3.Connection = Depends(get_db)):
@@ -268,7 +402,6 @@ def create_lot(
     db: sqlite3.Connection = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    # Logic: If admin, use provided seller_id. If normal user, force seller_id to be themselves.
     seller_id = current_user['id'] if not current_user['is_staff'] else (lot.seller_id or current_user['id'])
 
     cursor = db.cursor()
@@ -295,6 +428,7 @@ def get_lots(
     artist: Optional[str] = None,
     category: Optional[str] = None,
     seller_id: Optional[int] = None,
+    archived_only: bool = False,
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()
@@ -306,12 +440,19 @@ def get_lots(
     '''
     params = []
     
+    if archived_only:
+        query += ' AND l.is_archived = 1'
+    else:
+        query += ' AND (l.is_archived = 0 OR l.is_archived IS NULL)'
+
     if auction_id:
         query += ' AND l.auction_id = ?'
         params.append(auction_id)
-    if status:
+    
+    if status and not archived_only:
         query += ' AND l.status = ?'
         params.append(status)
+
     if artist:
         query += ' AND l.artist LIKE ?'
         params.append(f'%{artist}%')
@@ -328,6 +469,9 @@ def get_lots(
     lots = []
     for row in cursor.fetchall():
         lot = dict(row)
+        if lot.get('is_archived'):
+            lot['status'] = 'Archived'
+            
         cursor.execute('SELECT * FROM lot_images WHERE lot_id = ? ORDER BY display_order', (lot['id'],))
         lot['images'] = [dict(img) for img in cursor.fetchall()]
         lots.append(lot)
@@ -346,9 +490,99 @@ def get_lot(lot_id: int, db: sqlite3.Connection = Depends(get_db)):
     if not result: raise HTTPException(status_code=404, detail="Lot not found")
     
     lot = dict(result)
+    if lot.get('is_archived'):
+        lot['status'] = 'Archived'
+
     cursor.execute('SELECT * FROM lot_images WHERE lot_id = ? ORDER BY display_order', (lot_id,))
     lot['images'] = [dict(img) for img in cursor.fetchall()]
     return lot
+
+@app.put("/api/lots/{lot_id}", response_model=LotResponse)
+def update_lot(
+    lot_id: int,
+    lot_update: LotUpdate,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+         raise HTTPException(status_code=403, detail="Only staff can modify lots")
+
+    cursor = db.cursor()
+    update_data = lot_update.dict(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+
+    set_clause = ", ".join([f"{k} = ?" for k in update_data.keys()])
+    values = list(update_data.values()) + [lot_id]
+    
+    try:
+        cursor.execute(f"UPDATE lots SET {set_clause} WHERE id = ?", values)
+        db.commit()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return get_lot(lot_id, db)
+
+@app.delete("/api/lots/{lot_id}")
+def delete_lot(
+    lot_id: int,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can delete lots")
+        
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM lots WHERE id = ?", (lot_id,))
+    db.commit()
+    return {"message": "Lot deleted"}
+
+@app.delete("/api/lots/images/{image_id}")
+def delete_lot_image(
+    image_id: int,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can delete images")
+    
+    cursor = db.cursor()
+    cursor.execute("SELECT * FROM lot_images WHERE id = ?", (image_id,))
+    if not cursor.fetchone():
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    cursor.execute("DELETE FROM lot_images WHERE id = ?", (image_id,))
+    db.commit()
+    return {"message": "Image deleted"}
+
+@app.put("/api/lots/{lot_id}/archive")
+def archive_lot(
+    lot_id: int,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can archive lots")
+        
+    cursor = db.cursor()
+    cursor.execute('UPDATE lots SET is_archived = 1 WHERE id = ?', (lot_id,))
+    db.commit()
+    return {"message": "Lot archived"}
+
+@app.put("/api/lots/{lot_id}/unarchive")
+def unarchive_lot(
+    lot_id: int,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can restore lots")
+        
+    cursor = db.cursor()
+    # FIX: Restore by setting is_archived to 0. Original status is preserved.
+    cursor.execute('UPDATE lots SET is_archived = 0 WHERE id = ?', (lot_id,))
+    db.commit()
+    return {"message": "Lot restored"}
 
 @app.get("/api/clients/{client_id}/lots", response_model=List[LotResponse])
 def get_client_lots(
@@ -361,9 +595,14 @@ def get_client_lots(
     return get_lots(seller_id=client_id, db=db)
 
 @app.get("/api/lots/suggest-triage")
-def suggest_triage(estimate_low: float):
-    suggested = "Online" if estimate_low < 20000 else "Physical"
-    reason = f"Items under £20,000 typically go to Online stream. This item's lower estimate is £{estimate_low:,.0f}."
+def suggest_triage(estimate_low: str = Query(..., description="Low estimate")):
+    try:
+        cleaned_value = float(str(estimate_low).replace(',', '').replace(' ', ''))
+    except ValueError:
+        return {"suggested_triage": "Physical", "reason": "Invalid estimate value provided."}
+        
+    suggested = "Online" if cleaned_value < 20000 else "Physical"
+    reason = f"Items under £20,000 typically go to Online stream. This item's lower estimate is £{cleaned_value:,.0f}."
     return {"suggested_triage": suggested, "reason": reason}
 
 @app.put("/api/lots/{lot_id}/assign-auction")
@@ -390,13 +629,9 @@ def withdraw_lot(lot_id: int, db: sqlite3.Connection = Depends(get_db), current_
     lot = cursor.fetchone()
     if not lot: raise HTTPException(status_code=404, detail="Lot not found")
 
-    # Security: Only owner or staff can withdraw
     if not current_user['is_staff'] and lot['seller_id'] != current_user['id']:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    withdrawal_fee = 0
-    # ... (Logic for fee calculation omitted for brevity, but fee is 0 if withdrawn early)
-    
     cursor.execute('UPDATE lots SET status = ?, withdrawn_date = ? WHERE id = ?', ('Withdrawn', date.today(), lot_id))
     db.commit()
     return {"message": "Lot withdrawn"}
@@ -439,13 +674,13 @@ def complete_sale(lot_id: int, hammer_price: float, db: sqlite3.Connection = Dep
     if not current_user['is_staff']:
         raise HTTPException(status_code=403, detail="Only staff can finalize sales")
 
-    buyers_premium = hammer_price * 0.10
-    sellers_commission = hammer_price * 0.10
-    
     cursor = db.cursor()
     cursor.execute('UPDATE lots SET status = "Sold", sold_price = ? WHERE id = ?', (hammer_price, lot_id))
     db.commit()
     
+    buyers_premium = hammer_price * 0.10
+    sellers_commission = hammer_price * 0.10
+
     return {
         "message": "Sale completed",
         "hammer_price": hammer_price,
