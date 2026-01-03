@@ -421,6 +421,17 @@ def create_lot(
     lot_dict['images'] = []
     return lot_dict
 
+@app.get("/api/lots/suggest-triage")
+def suggest_triage(estimate_low: str = Query(..., description="Low estimate")):
+    try:
+        cleaned_value = float(str(estimate_low).replace(',', '').replace(' ', ''))
+    except ValueError:
+        return {"suggested_triage": "Physical", "reason": "Invalid estimate value provided."}
+        
+    suggested = "Online" if cleaned_value < 20000 else "Physical"
+    reason = f"Items under £20,000 typically go to Online stream. This item's lower estimate is £{cleaned_value:,.0f}."
+    return {"suggested_triage": suggested, "reason": reason}
+
 @app.get("/api/lots", response_model=List[LotResponse])
 def get_lots(
     auction_id: Optional[int] = None,
@@ -593,17 +604,6 @@ def get_client_lots(
     if not current_user['is_staff'] and current_user['id'] != client_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     return get_lots(seller_id=client_id, db=db)
-
-@app.get("/api/lots/suggest-triage")
-def suggest_triage(estimate_low: str = Query(..., description="Low estimate")):
-    try:
-        cleaned_value = float(str(estimate_low).replace(',', '').replace(' ', ''))
-    except ValueError:
-        return {"suggested_triage": "Physical", "reason": "Invalid estimate value provided."}
-        
-    suggested = "Online" if cleaned_value < 20000 else "Physical"
-    reason = f"Items under £20,000 typically go to Online stream. This item's lower estimate is £{cleaned_value:,.0f}."
-    return {"suggested_triage": suggested, "reason": reason}
 
 @app.put("/api/lots/{lot_id}/assign-auction")
 def assign_lot_to_auction(

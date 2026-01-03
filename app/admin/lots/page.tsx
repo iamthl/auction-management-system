@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -23,7 +24,7 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog"
-import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X } from "lucide-react"
+import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function LotsPage() {
@@ -374,17 +375,29 @@ export default function LotsPage() {
           />
         </div>
         <div className="space-y-2">
-            <Label>Triage Status</Label>
-            <Select
-            value={formData.triage_status}
-            onValueChange={(v) => setFormData({ ...formData, triage_status: v as any })}
-            >
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-                <SelectItem value="Physical">Physical (Premium)</SelectItem>
-                <SelectItem value="Online">Online (Standard)</SelectItem>
-            </SelectContent>
-            </Select>
+                  <Label>Triage Status</Label>
+                  <Select
+                    value={formData.triage_status}
+                    onValueChange={(v) => setFormData({ ...formData, triage_status: v as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Physical">Physical (Premium)</SelectItem>
+                      <SelectItem value="Online">Online (Standard)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {triageSuggestion && (
+                    <Alert className="mt-2">
+                      <Lightbulb className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Suggested: {triageSuggestion.suggested_triage}</strong>
+                        <br />
+                        <span className="text-xs">{triageSuggestion.reason}</span>
+                      </AlertDescription>
+                    </Alert>
+                  )}
         </div>
         <div className="space-y-2 md:col-span-2">
             <Label>Description</Label>
@@ -565,7 +578,7 @@ export default function LotsPage() {
                ) : (
                     <div className="flex w-full gap-2">
                        <Button variant="outline" size="sm" className="flex-1" onClick={() => handleRestore(lot.id)}>
-                           <RefreshCcw className="h-3 w-3 mr-1" /> Restore Lot
+                           <RefreshCcw className="h-3 w-3 mr-1" /> Restore
                        </Button>
                        <AlertDialog>
                             <AlertDialogTrigger asChild>
