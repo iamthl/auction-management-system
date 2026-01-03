@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription } from "@/components/ui/alert" 
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -24,7 +24,7 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog"
-import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb} from "lucide-react"
+import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function LotsPage() {
@@ -41,7 +41,10 @@ export default function LotsPage() {
   const [triageSuggestion, setTriageSuggestion] = useState<any>(null)
   const [commission, setCommission] = useState<any>(null)
   const [salePrice, setSalePrice] = useState("")
-  const [imageFiles, setImageFiles] = useState<FileList | null>(null)
+  
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
@@ -94,6 +97,26 @@ export default function LotsPage() {
     })
   }
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files)
+      
+      setImageFiles(prev => [...prev, ...newFiles])
+      
+      const newPreviews = newFiles.map(file => URL.createObjectURL(file))
+      setPreviewImages(prev => [...prev, ...newPreviews])
+      
+      e.target.value = ""
+    }
+  }
+
+  const removePreviewImage = (index: number) => {
+    URL.revokeObjectURL(previewImages[index])
+    setPreviewImages(prev => prev.filter((_, i) => i !== index))
+    setImageFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -106,7 +129,7 @@ export default function LotsPage() {
         year_of_production: formData.year ? Number.parseInt(formData.year) : undefined,
       } as any)
 
-      if (imageFiles && imageFiles.length > 0) {
+      if (imageFiles.length > 0) {
         for (let i = 0; i < imageFiles.length; i++) {
           await api.uploadLotImage(newLot.id, imageFiles[i], i === 0)
         }
@@ -134,7 +157,7 @@ export default function LotsPage() {
             year_of_production: formData.year ? Number.parseInt(formData.year) : undefined,
         } as any)
         
-        if (imageFiles && imageFiles.length > 0) {
+        if (imageFiles.length > 0) {
             for (let i = 0; i < imageFiles.length; i++) {
                 await api.uploadLotImage(editingLot.id, imageFiles[i], false)
             }
@@ -162,7 +185,8 @@ export default function LotsPage() {
         reserve_price: "",
         triage_status: "Physical",
       })
-      setImageFiles(null)
+      setImageFiles([])
+      setPreviewImages([])
   }
 
   const startEditing = (lot: Lot) => {
@@ -180,7 +204,8 @@ export default function LotsPage() {
         reserve_price: lot.reserve_price.toString(),
         triage_status: lot.triage_status,
       })
-      setImageFiles(null)
+      setImageFiles([])
+      setPreviewImages([])
   }
 
   const handleDelete = async (id: number) => {
@@ -258,30 +283,6 @@ export default function LotsPage() {
 
   const renderFormContent = (submitLabel: string) => (    
     <div className="space-y-4">
-      {editingLot && editingLot.images && editingLot.images.length > 0 && (
-          <div className="space-y-2">
-            <Label>Current Images</Label>
-            <div className="grid grid-cols-4 gap-2 border p-2 rounded bg-muted/20">
-                {editingLot.images.map(img => (
-                   <div key={img.id} className="relative group aspect-square bg-background rounded overflow-hidden border">
-                     <img 
-                        src={img.thumbnail_url || img.image_url} 
-                        className="w-full h-full object-cover" 
-                        alt="lot"
-                     />
-                     <button 
-                        type="button" 
-                        onClick={() => handleDeleteImage(img.id)} 
-                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                     >
-                       <X className="h-3 w-3" />
-                     </button>
-                   </div>
-                ))}
-            </div>
-          </div>
-      )}
-
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Lot Number</Label>
@@ -408,16 +409,60 @@ export default function LotsPage() {
             />
         </div>
         
-        {/* Image Upload Input */}
         <div className="space-y-2 md:col-span-2">
-          <Label>{editingLot ? "Upload New Images" : "Images"}</Label>
-          <Input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={(e) => setImageFiles(e.target.files)}
-          />
-          {editingLot && <p className="text-xs text-muted-foreground">New images will be added to the existing ones.</p>}
+          <Label>Images</Label>
+          
+          {/* Upload Input */}
+          <div className="flex items-center gap-2 mb-3">
+             <Input 
+                type="file" 
+                multiple 
+                accept="image/*" 
+                onChange={handleImageSelect}
+             />
+          </div>
+          
+          {/* Existing Images + New Previews */}
+          {( (editingLot?.images && editingLot.images.length > 0) || previewImages.length > 0 ) && (
+            <div className="grid grid-cols-5 gap-2 border p-2 rounded bg-muted/10">
+                {editingLot?.images?.map(img => (
+                   <div key={img.id} className="relative group aspect-square bg-background rounded overflow-hidden border shadow-sm">
+                     <img 
+                        src={img.thumbnail_url || img.image_url} 
+                        className="w-full h-full object-cover" 
+                        alt="lot"
+                     />
+                     <button 
+                        type="button" 
+                        onClick={() => handleDeleteImage(img.id)} 
+                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Delete existing image"
+                     >
+                       <X className="h-3 w-3" />
+                     </button>
+                     {/* <div className="absolute bottom-0 w-full bg-black/60 text-white text-[10px] text-center py-0.5">Existing</div> */}
+                   </div>
+                ))}
+
+                {previewImages.map((src, index) => (
+                  <div key={`new-${index}`} className="relative group aspect-square bg-background rounded overflow-hidden border shadow-sm">
+                    <img src={src} alt="Preview" className="w-full h-full object-cover" />
+                    <button 
+                        type="button" 
+                        onClick={() => removePreviewImage(index)} 
+                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove upload"
+                     >
+                       <X className="h-3 w-3" />
+                     </button>
+                     {/* <div className="absolute bottom-0 w-full bg-blue-600/70 text-white text-[10px] text-center py-0.5">New</div> */}
+                  </div>
+                ))}
+            </div>
+          )}
+          {!editingLot?.images?.length && previewImages.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">No images selected.</p>
+          )}
         </div>
 
       </div>
@@ -463,15 +508,16 @@ export default function LotsPage() {
         </Card>
       )}
 
-      {/* Edit Dialog */}
       <Dialog open={!!editingLot} onOpenChange={(open) => !open && setEditingLot(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="sm:max-w-[1000px] w-full max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit Lot</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleUpdateSubmit}>
-            {renderFormContent("Save Changes")}
-          </form>
+          <div className="flex-1 overflow-y-auto p-1">
+              <form onSubmit={handleUpdateSubmit}>
+                {renderFormContent("Save Changes")}
+              </form>
+          </div>
         </DialogContent>
       </Dialog>
 
