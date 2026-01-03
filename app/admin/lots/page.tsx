@@ -62,15 +62,25 @@ export default function LotsPage() {
   }, [viewMode])
 
   useEffect(() => {
-    if (formData.estimate_low && Number.parseFloat(formData.estimate_low) > 0) {
-      api.getSuggestedTriage(Number.parseFloat(formData.estimate_low)).then(setTriageSuggestion)
-    }
+    const timer = setTimeout(() => {
+        const val = parseFloat(formData.estimate_low)
+        if (!isNaN(val) && val > 0) {
+            api.getSuggestedTriage(val).then(setTriageSuggestion).catch(() => {})
+        }
+    }, 500)
+
+    return () => clearTimeout(timer)
   }, [formData.estimate_low])
 
   useEffect(() => {
-    if (salePrice && Number.parseFloat(salePrice) > 0) {
-      api.calculateCommission(Number.parseFloat(salePrice)).then(setCommission)
-    }
+    const timer = setTimeout(() => {
+        const val = parseFloat(salePrice)
+        if (!isNaN(val) && val > 0) {
+            api.calculateCommission(val).then(setCommission).catch(() => {})
+        }
+    }, 500)
+
+    return () => clearTimeout(timer)
   }, [salePrice])
 
   const loadData = () => {
@@ -245,8 +255,8 @@ export default function LotsPage() {
     }
   }
 
-  const LotForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void, submitLabel: string }) => (
-    <form onSubmit={onSubmit} className="space-y-4">
+  const renderFormContent = (submitLabel: string) => (    
+    <div className="space-y-4">
       {editingLot && editingLot.images && editingLot.images.length > 0 && (
           <div className="space-y-2">
             <Label>Current Images</Label>
@@ -404,7 +414,7 @@ export default function LotsPage() {
           Cancel
         </Button>
       </div>
-    </form>
+    </div>
   )
 
   return (
@@ -433,7 +443,9 @@ export default function LotsPage() {
         <Card>
           <CardHeader><CardTitle>Create New Lot</CardTitle></CardHeader>
           <CardContent>
-            <LotForm onSubmit={handleCreateSubmit} submitLabel="Create Lot" />
+            <form onSubmit={handleCreateSubmit}>
+                {renderFormContent("Create Lot")}
+            </form>
           </CardContent>
         </Card>
       )}
@@ -444,7 +456,9 @@ export default function LotsPage() {
           <DialogHeader>
             <DialogTitle>Edit Lot</DialogTitle>
           </DialogHeader>
-          <LotForm onSubmit={handleUpdateSubmit} submitLabel="Save Changes" />
+          <form onSubmit={handleUpdateSubmit}>
+            {renderFormContent("Save Changes")}
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -547,33 +561,6 @@ export default function LotsPage() {
                             </Dialog>
                         )}
                     </div>
-
-                        {/* Specific Status Actions */}
-                        {/* {lot.status === "Pending" && (
-                        <div className="w-full pt-2 space-y-2 border-t mt-2">
-                            <Dialog>
-                            <DialogTrigger asChild>
-                                <Button size="sm" className="flex-1" onClick={() => setSelectedLot(lot)}>
-                                <Calendar className="h-4 w-4 mr-2" /> Assign Auction
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader><DialogTitle>Assign Lot</DialogTitle></DialogHeader>
-                                <div className="space-y-4">
-                                <Select value={assignAuctionId} onValueChange={setAssignAuctionId}>
-                                    <SelectTrigger><SelectValue placeholder="Select auction..." /></SelectTrigger>
-                                    <SelectContent>
-                                    {auctions.filter((a) => a.status === "Upcoming").map((auction) => (
-                                        <SelectItem key={auction.id} value={String(auction.id)}>{auction.title}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <Button onClick={handleAssignAuction} className="w-full">Assign</Button>
-                                </div>
-                            </DialogContent>
-                            </Dialog>
-                        </div>
-                        )} */}
                    </>
                ) : (
                     <div className="flex w-full gap-2">
