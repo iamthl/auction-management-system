@@ -4,8 +4,8 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
 interface User {
-  name: str
-  email: str
+  name: string 
+  email: string 
   is_staff: boolean
   client_type: string
 }
@@ -28,7 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check localStorage on load
-    const storedToken = localStorage.getItem("token")
+    // KEY FIX: Changed "token" to "access_token" to match api.ts
+    const storedToken = localStorage.getItem("access_token")
     const storedUser = localStorage.getItem("user")
     
     if (storedToken && storedUser) {
@@ -41,7 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (newToken: string, userData: any) => {
     const userObj = {
       name: userData.name,
-      email: userData.sub || "", 
+      // Handle email if present in response, or fallback
+      email: userData.email || userData.sub || "", 
       is_staff: userData.is_staff,
       client_type: userData.user_type
     }
@@ -49,7 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(newToken)
     setUser(userObj)
     
-    localStorage.setItem("token", newToken)
+    // KEY FIX: Changed "token" to "access_token"
+    localStorage.setItem("access_token", newToken)
     localStorage.setItem("user", JSON.stringify(userObj))
     
     // Redirect logic
@@ -63,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setToken(null)
     setUser(null)
-    localStorage.removeItem("token")
+    localStorage.removeItem("access_token")
     localStorage.removeItem("user")
     router.push("/login")
   }
