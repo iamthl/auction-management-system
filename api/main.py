@@ -60,18 +60,30 @@ def startup_event():
     
     try:
         cursor.execute("ALTER TABLE auctions ADD COLUMN is_archived INTEGER DEFAULT 0")
-        conn.commit()
-        print("Migrated auctions table: Added is_archived column.")
-    except sqlite3.OperationalError:
-        pass 
+    except sqlite3.OperationalError: pass 
 
     try:
         cursor.execute("ALTER TABLE lots ADD COLUMN is_archived INTEGER DEFAULT 0")
-        conn.commit()
-        print("Migrated lots table: Added is_archived column.")
-    except sqlite3.OperationalError:
-        pass 
+    except sqlite3.OperationalError: pass 
+
+    new_columns = [
+        ("medium", "TEXT"),
+        ("material", "TEXT"),
+        ("weight", "REAL"),
+        ("height", "REAL"),
+        ("width", "REAL"),
+        ("depth", "REAL"),
+        ("is_framed", "INTEGER DEFAULT 0")
+    ]
+
+    for col_name, col_type in new_columns:
+        try:
+            cursor.execute(f"ALTER TABLE lots ADD COLUMN {col_name} {col_type}")
+            print(f"Migrated lots table: Added {col_name} column.")
+        except sqlite3.OperationalError:
+            pass
         
+    conn.commit()
     conn.close()
 
 def verify_password(plain_password, hashed_password):
@@ -145,6 +157,13 @@ class LotCreate(BaseModel):
     reserve_price: float
     triage_status: str = "Physical"
     seller_id: Optional[int] = None
+    medium: Optional[str] = None
+    material: Optional[str] = None
+    weight: Optional[float] = None
+    height: Optional[float] = None
+    width: Optional[float] = None
+    depth: Optional[float] = None
+    is_framed: Optional[bool] = False
 
 class LotUpdate(BaseModel):
     lot_reference: Optional[str] = None
@@ -159,6 +178,13 @@ class LotUpdate(BaseModel):
     estimate_high: Optional[float] = None
     reserve_price: Optional[float] = None
     triage_status: Optional[str] = None
+    medium: Optional[str] = None
+    material: Optional[str] = None
+    weight: Optional[float] = None
+    height: Optional[float] = None
+    width: Optional[float] = None
+    depth: Optional[float] = None
+    is_framed: Optional[bool] = None
 
 class LotResponse(LotCreate):
     id: int
@@ -406,13 +432,19 @@ def create_lot(
 
     cursor = db.cursor()
     cursor.execute('''
-        INSERT INTO lots (lot_reference, artist, title, year_of_production, category, description,
-                         dimensions, framing_details, estimate_low, estimate_high, reserve_price, 
-                         triage_status, seller_id, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending")
-    ''', (lot.lot_reference, lot.artist, lot.title, lot.year_of_production, lot.category, 
-          lot.description, lot.dimensions, lot.framing_details, lot.estimate_low, 
-          lot.estimate_high, lot.reserve_price, lot.triage_status, seller_id))
+        INSERT INTO lots (
+            lot_reference, artist, title, year_of_production, category, description,
+            dimensions, framing_details, estimate_low, estimate_high, reserve_price, 
+            triage_status, seller_id, status,
+            medium, material, weight, height, width, depth, is_framed
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending", ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        lot.lot_reference, lot.artist, lot.title, lot.year_of_production, lot.category, 
+        lot.description, lot.dimensions, lot.framing_details, lot.estimate_low, 
+        lot.estimate_high, lot.reserve_price, lot.triage_status, seller_id,
+        lot.medium, lot.material, lot.weight, lot.height, lot.width, lot.depth, lot.is_framed
+    ))
     db.commit()
     
     lot_id = cursor.lastrowid
@@ -590,7 +622,6 @@ def unarchive_lot(
         raise HTTPException(status_code=403, detail="Only staff can restore lots")
         
     cursor = db.cursor()
-    # FIX: Restore by setting is_archived to 0. Original status is preserved.
     cursor.execute('UPDATE lots SET is_archived = 0 WHERE id = ?', (lot_id,))
     db.commit()
     return {"message": "Lot restored"}

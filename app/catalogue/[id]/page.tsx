@@ -5,22 +5,28 @@ import { api, type Lot } from "@/lib/api"
 import { PublicHeader } from "@/components/public-header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, MapPin, Ruler, Frame, ArrowLeft } from "lucide-react"
+import { Calendar, MapPin, Ruler, Frame, ArrowLeft, Weight, Palette, Image as ImageIcon, Box } from "lucide-react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, notFound } from "next/navigation"
 
 export default function LotDetailPage() {
   const params = useParams()
   const [lot, setLot] = useState<Lot | null>(null)
   const [selectedImage, setSelectedImage] = useState(0)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (params.id) {
-      api.getLot(Number(params.id)).then(setLot)
+      api.getLot(Number(params.id))
+         .then((data) => {
+             setLot(data)
+             setLoading(false)
+         })
+         .catch(() => setLoading(false))
     }
   }, [params.id])
 
-  if (!lot) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <PublicHeader />
@@ -29,13 +35,9 @@ export default function LotDetailPage() {
     )
   }
 
-  if (lot.status === "Archived") {
-    return (
-      <div className="min-h-screen bg-background">
-        <PublicHeader />
-        <div className="text-center py-12">Lot not found</div>
-      </div>
-    )
+  if (!lot || lot.status === "Archived") {
+    notFound()
+    return null
   }
 
   const images = lot.images?.length
@@ -92,26 +94,69 @@ export default function LotDetailPage() {
 
             <div className="flex gap-2">
               <Badge variant="outline">{lot.triage_status}</Badge>
-              {/* <Badge>{lot.status}</Badge> */}
+              <Badge variant="secondary">{lot.category}</Badge>
             </div>
 
-            {/* Specifications */}
+            {/* Specifications - DYNAMIC DISPLAY */}
             <div className="space-y-3 py-6 border-y border-border">
-              {lot.dimensions && (
+              
+              {/* Dimensions */}
+              {(lot.height || lot.width || lot.depth) && (
                 <div className="flex items-start gap-3">
                   <Ruler className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Dimensions</p>
-                    <p className="text-sm text-muted-foreground">{lot.dimensions}</p>
+                    <p className="text-sm text-muted-foreground">
+                        {lot.height ? `${lot.height}cm (H)` : ''} 
+                        {lot.width ? ` x ${lot.width}cm (L)` : ''} 
+                        {lot.depth ? ` x ${lot.depth}cm (W)` : ''}
+                    </p>
                   </div>
                 </div>
               )}
-              {lot.framing_details && (
+
+              {/* Medium / Image Type */}
+              {lot.medium && (
+                <div className="flex items-start gap-3">
+                  {lot.category === 'Photography' ? <ImageIcon className="h-5 w-5 mt-0.5" /> : <Palette className="h-5 w-5 mt-0.5" />}
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                        {lot.category === 'Photography' ? "Image Type" : "Medium"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{lot.medium}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Material */}
+              {lot.material && (
+                <div className="flex items-start gap-3">
+                  <Box className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Material</p>
+                    <p className="text-sm text-muted-foreground">{lot.material}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Weight */}
+              {lot.weight && (
+                <div className="flex items-start gap-3">
+                  <Weight className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Weight</p>
+                    <p className="text-sm text-muted-foreground">{lot.weight} kg</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Framing */}
+              {(lot.is_framed !== undefined && lot.is_framed !== null) && ["Painting", "Drawing"].includes(lot.category) && (
                 <div className="flex items-start gap-3">
                   <Frame className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Framing</p>
-                    <p className="text-sm text-muted-foreground">{lot.framing_details}</p>
+                    <p className="text-sm text-muted-foreground">{lot.is_framed ? "Framed" : "Unframed"}</p>
                   </div>
                 </div>
               )}

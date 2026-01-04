@@ -63,6 +63,13 @@ export interface Lot {
   location?: string
   auction_date?: string
   start_time?: string
+  medium?: string
+  material?: string
+  weight?: number
+  height?: number
+  width?: number
+  depth?: number
+  is_framed?: boolean
 }
 
 export interface CommissionResult {
