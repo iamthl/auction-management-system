@@ -7,13 +7,21 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, MapPin, Ruler, Frame, ArrowLeft, Weight, Palette, Image as ImageIcon, Box } from "lucide-react"
 import Link from "next/link"
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselNext, 
+  CarouselPrevious,
+  type CarouselApi 
+} from "@/components/ui/carousel"
 import { useParams, notFound } from "next/navigation"
 
 export default function LotDetailPage() {
   const params = useParams()
   const [lot, setLot] = useState<Lot | null>(null)
-  const [selectedImage, setSelectedImage] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>() // State to control the slider
 
   useEffect(() => {
     if (params.id) {
@@ -40,9 +48,10 @@ export default function LotDetailPage() {
     return null
   }
 
-  const images = lot.images?.length
+  // Images + Video
+  const mediaItems = lot.images?.length
     ? lot.images
-    : [{ image_url: `/placeholder.svg?height=800&width=800&query=fine+art+${lot.artist}`, is_primary: true }]
+    : [{ image_url: `/placeholder.svg?height=800&width=800&query=fine+art+${lot.artist}`, is_primary: true, media_type: 'image' }]
 
   return (
     <div className="min-h-screen bg-background ">
@@ -57,33 +66,57 @@ export default function LotDetailPage() {
         </Button>
 
         <div className="grid lg:grid-cols-2 gap-12">
-          {/* Images */}
+          {/* Media Slider Section */}
           <div className="space-y-4">
-            <div className="aspect-square bg-muted rounded-sm overflow-hidden">
-              <img
-                src={images[selectedImage].image_url || "/placeholder.svg"}
-                alt={lot.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            {images.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
-                {images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImage(idx)}
-                    className={`aspect-square bg-muted rounded-sm overflow-hidden border-2 ${
-                      selectedImage === idx ? "border-primary" : "border-transparent"
-                    }`}
-                  >
-                    <img src={img.image_url || "/placeholder.svg"} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
+             <Carousel setApi={setCarouselApi} className="w-full max-w-xl mx-auto">
+                <CarouselContent>
+                    {mediaItems.map((item, index) => (
+                        <CarouselItem key={index}>
+                            <div className="p-1">
+                                <div className="aspect-square bg-muted rounded-sm overflow-hidden flex items-center justify-center">
+                                    {/* Video / Image Logic */}
+                                    {item.media_type === 'video' || (typeof item.image_url === 'string' && item.image_url.endsWith('.mp4')) ? (
+                                        <video 
+                                            src={item.image_url} 
+                                            controls 
+                                            className="w-full h-full object-contain"
+                                        />
+                                    ) : (
+                                        <img
+                                            src={item.image_url}
+                                            alt={lot.title}
+                                            className="w-full h-full object-contain"
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </CarouselItem>
+                    ))}
+                </CarouselContent>
+                {mediaItems.length > 1 && <CarouselPrevious className="left-2" />}
+                {mediaItems.length > 1 && <CarouselNext className="right-2" />}
+             </Carousel>
+             
+             {mediaItems.length > 1 && (
+                 <div className="flex gap-2 overflow-x-auto pb-2 justify-center">
+                     {mediaItems.map((item, idx) => (
+                         <button 
+                            key={idx} 
+                            onClick={() => carouselApi?.scrollTo(idx)}
+                            className="h-16 w-16 flex-shrink-0 rounded overflow-hidden border hover:border-primary transition-colors"
+                         >
+                             {item.media_type === 'video' || (typeof item.image_url === 'string' && item.image_url.endsWith('.mp4')) ? (
+                                 <div className="w-full h-full bg-black flex items-center justify-center text-white text-[10px]">Video</div>
+                             ) : (
+                                 <img src={item.thumbnail_url || item.image_url} className="w-full h-full object-cover" alt="" />
+                             )}
+                         </button>
+                     ))}
+                 </div>
+             )}
           </div>
 
-          {/* Details */}
+          {/* Details Section */}
           <div className="space-y-6">
             <div>
               <p className="text-sm text-muted-foreground mb-2">{lot.lot_reference}</p>
@@ -92,12 +125,13 @@ export default function LotDetailPage() {
               {lot.year_of_production && <p className="text-lg text-muted-foreground">{lot.year_of_production}</p>}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Badge variant="outline">{lot.triage_status}</Badge>
               <Badge variant="secondary">{lot.category}</Badge>
+              {lot.subcategory && <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted/80">{lot.subcategory}</Badge>}
             </div>
 
-            {/* Specifications - DYNAMIC DISPLAY */}
+            {/* Specifications */}
             <div className="space-y-3 py-6 border-y border-border">
               
               {/* Dimensions */}
