@@ -73,7 +73,8 @@ def startup_event():
         ("height", "REAL"),
         ("width", "REAL"),
         ("depth", "REAL"),
-        ("is_framed", "INTEGER DEFAULT 0")
+        ("is_framed", "INTEGER DEFAULT 0"),
+        ("subcategory", "TEXT")
     ]
 
     for col_name, col_type in new_columns:
@@ -82,6 +83,12 @@ def startup_event():
             print(f"Migrated lots table: Added {col_name} column.")
         except sqlite3.OperationalError:
             pass
+            
+    try:
+        cursor.execute("ALTER TABLE lot_images ADD COLUMN media_type TEXT DEFAULT 'image'")
+        print("Migrated lot_images table: Added media_type column.")
+    except sqlite3.OperationalError:
+        pass
         
     conn.commit()
     conn.close()
@@ -149,6 +156,7 @@ class LotCreate(BaseModel):
     title: str
     year_of_production: Optional[int] = None
     category: str
+    subcategory: Optional[str] = None 
     dimensions: Optional[str] = None
     framing_details: Optional[str] = None
     description: Optional[str] = None
@@ -171,6 +179,7 @@ class LotUpdate(BaseModel):
     title: Optional[str] = None
     year_of_production: Optional[int] = None
     category: Optional[str] = None
+    subcategory: Optional[str] = None 
     dimensions: Optional[str] = None
     framing_details: Optional[str] = None
     description: Optional[str] = None
@@ -226,7 +235,7 @@ class CommissionCalculation(BaseModel):
 def read_root():
     return {"message": "Fotherby's Auction Management API", "version": "1.0.0"}
 
-# AUTH
+# AUTH (No changes)
 @app.post("/api/auth/register", response_model=Token)
 def register(client: ClientRegister, db: sqlite3.Connection = Depends(get_db)):
     cursor = db.cursor()
@@ -422,6 +431,18 @@ def generate_auction_pdf(auction_id: int, db: sqlite3.Connection = Depends(get_d
         raise HTTPException(status_code=500, detail=str(e))
 
 # LOTS
+@app.get("/api/lots/suggest-triage")
+def suggest_triage(estimate_low: str = Query(..., description="Low estimate")):
+    try:
+        cleaned_value = float(str(estimate_low).replace(',', '').replace(' ', ''))
+    except ValueError:
+        return {"suggested_triage": "Physical", "reason": "Invalid estimate value provided."}
+        
+    suggested = "Online" if cleaned_value < 20000 else "Physical"
+    reason = f"Items under £20,000 typically go to Online stream. This item's lower estimate is £{cleaned_value:,.0f}."
+    return {"suggested_triage": suggested, "reason": reason}
+
+# CREATE LOT
 @app.post("/api/lots", response_model=LotResponse)
 def create_lot(
     lot: LotCreate, 
@@ -433,14 +454,14 @@ def create_lot(
     cursor = db.cursor()
     cursor.execute('''
         INSERT INTO lots (
-            lot_reference, artist, title, year_of_production, category, description,
+            lot_reference, artist, title, year_of_production, category, subcategory, description,
             dimensions, framing_details, estimate_low, estimate_high, reserve_price, 
             triage_status, seller_id, status,
             medium, material, weight, height, width, depth, is_framed
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending", ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending", ?, ?, ?, ?, ?, ?, ?)
     ''', (
-        lot.lot_reference, lot.artist, lot.title, lot.year_of_production, lot.category, 
+        lot.lot_reference, lot.artist, lot.title, lot.year_of_production, lot.category, lot.subcategory,
         lot.description, lot.dimensions, lot.framing_details, lot.estimate_low, 
         lot.estimate_high, lot.reserve_price, lot.triage_status, seller_id,
         lot.medium, lot.material, lot.weight, lot.height, lot.width, lot.depth, lot.is_framed
@@ -452,17 +473,6 @@ def create_lot(
     lot_dict = dict(cursor.fetchone())
     lot_dict['images'] = []
     return lot_dict
-
-@app.get("/api/lots/suggest-triage")
-def suggest_triage(estimate_low: str = Query(..., description="Low estimate")):
-    try:
-        cleaned_value = float(str(estimate_low).replace(',', '').replace(' ', ''))
-    except ValueError:
-        return {"suggested_triage": "Physical", "reason": "Invalid estimate value provided."}
-        
-    suggested = "Online" if cleaned_value < 20000 else "Physical"
-    reason = f"Items under £20,000 typically go to Online stream. This item's lower estimate is £{cleaned_value:,.0f}."
-    return {"suggested_triage": suggested, "reason": reason}
 
 @app.get("/api/lots", response_model=List[LotResponse])
 def get_lots(
@@ -540,6 +550,7 @@ def get_lot(lot_id: int, db: sqlite3.Connection = Depends(get_db)):
     lot['images'] = [dict(img) for img in cursor.fetchall()]
     return lot
 
+# UPDATE LOT
 @app.put("/api/lots/{lot_id}", response_model=LotResponse)
 def update_lot(
     lot_id: int,
@@ -679,26 +690,40 @@ async def upload_lot_image(
     thumb_dir = Path("public/uploads/lots/thumbnails")
     thumb_dir.mkdir(parents=True, exist_ok=True)
     
-    file_path = upload_dir / f"{lot_id}_{file.filename}"
+    # Detect video
+    content_type = file.content_type or ""
+    is_video = content_type.startswith("video/")
+    media_type = "video" if is_video else "image"
+    
+    file_ext = os.path.splitext(file.filename)[1]
+    filename = f"{lot_id}_{int(datetime.utcnow().timestamp())}{file_ext}"
+    
+    file_path = upload_dir / filename
     content = await file.read()
     with file_path.open("wb") as f:
         f.write(content)
     
-    try:
-        image = Image.open(io.BytesIO(content))
-        image.thumbnail((300, 300), Image.Resampling.LANCZOS)
-        thumb_path = thumb_dir / f"{lot_id}_thumb_{file.filename}"
-        image.save(thumb_path, quality=85, optimize=True)
-        thumbnail_url = f"/uploads/lots/thumbnails/{lot_id}_thumb_{file.filename}"
-    except Exception:
-        thumbnail_url = None
+    thumbnail_url = None
+    image_url = f"/uploads/lots/{filename}"
+
+    if not is_video:
+        try:
+            image = Image.open(io.BytesIO(content))
+            image.thumbnail((300, 300), Image.Resampling.LANCZOS)
+            thumb_filename = f"thumb_{filename}"
+            thumb_path = thumb_dir / thumb_filename
+            image.save(thumb_path, quality=85, optimize=True)
+            thumbnail_url = f"/uploads/lots/thumbnails/{thumb_filename}"
+        except Exception:
+            thumbnail_url = None
+    else:
+        pass
     
     cursor = db.cursor()
-    image_url = f"/uploads/lots/{lot_id}_{file.filename}"
-    cursor.execute('INSERT INTO lot_images (lot_id, image_url, thumbnail_url, is_primary) VALUES (?, ?, ?, ?)', 
-                   (lot_id, image_url, thumbnail_url, is_primary))
+    cursor.execute('INSERT INTO lot_images (lot_id, image_url, thumbnail_url, is_primary, media_type) VALUES (?, ?, ?, ?, ?)', 
+                   (lot_id, image_url, thumbnail_url, is_primary, media_type))
     db.commit()
-    return {"message": "Image uploaded", "url": image_url}
+    return {"message": "Media uploaded", "url": image_url, "media_type": media_type}
 
 @app.post("/api/lots/{lot_id}/complete-sale")
 def complete_sale(lot_id: int, hammer_price: float, db: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -735,6 +760,7 @@ def search_catalogue(
     location: Optional[str] = None,
     auction_type: Optional[str] = None,
     category: Optional[str] = None,
+    subcategory: Optional[str] = None,
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()
@@ -760,6 +786,9 @@ def search_catalogue(
     if category:
         query += ' AND l.category = ?'
         params.append(category)
+    if subcategory: # NEW FILTER
+        query += ' AND l.subcategory = ?'
+        params.append(subcategory)
     
     query += ' ORDER BY a.auction_date ASC'
     cursor.execute(query, params)
@@ -767,7 +796,8 @@ def search_catalogue(
     lots = []
     for row in cursor.fetchall():
         lot = dict(row)
-        cursor.execute('SELECT * FROM lot_images WHERE lot_id = ? LIMIT 1', (lot['id'],))
+        # Fetch first image or video
+        cursor.execute('SELECT * FROM lot_images WHERE lot_id = ? ORDER BY is_primary DESC, display_order ASC LIMIT 1', (lot['id'],))
         img = cursor.fetchone()
         lot['images'] = [dict(img)] if img else []
         lots.append(lot)
@@ -777,6 +807,15 @@ def search_catalogue(
 def get_categories(db: sqlite3.Connection = Depends(get_db)):
     cursor = db.cursor()
     cursor.execute('SELECT DISTINCT category FROM lots WHERE category IS NOT NULL ORDER BY category')
+    return [row[0] for row in cursor.fetchall()]
+
+@app.get("/api/subcategories")
+def get_subcategories(category: Optional[str] = None, db: sqlite3.Connection = Depends(get_db)):
+    cursor = db.cursor()
+    if category:
+        cursor.execute('SELECT DISTINCT subcategory FROM lots WHERE category = ? AND subcategory IS NOT NULL AND subcategory != "" ORDER BY subcategory', (category,))
+    else:
+        cursor.execute('SELECT DISTINCT subcategory FROM lots WHERE subcategory IS NOT NULL AND subcategory != "" ORDER BY subcategory')
     return [row[0] for row in cursor.fetchall()]
 
 if __name__ == "__main__":

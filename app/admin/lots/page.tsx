@@ -25,7 +25,7 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog"
-import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb } from "lucide-react"
+import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb, Video } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function LotsPage() {
@@ -53,6 +53,7 @@ export default function LotsPage() {
     title: "",
     year: "",
     category: "Painting",
+    subcategory: "",
     subject: "Landscape",
     description: "",
     estimate_low: "",
@@ -138,6 +139,7 @@ export default function LotsPage() {
         height: formData.height ? Number.parseFloat(formData.height) : undefined,
         width: formData.width ? Number.parseFloat(formData.width) : undefined,
         depth: formData.depth ? Number.parseFloat(formData.depth) : undefined,
+        subcategory: formData.subcategory
       } as any)
 
       if (imageFiles.length > 0) {
@@ -170,6 +172,7 @@ export default function LotsPage() {
             height: formData.height ? Number.parseFloat(formData.height) : undefined,
             width: formData.width ? Number.parseFloat(formData.width) : undefined,
             depth: formData.depth ? Number.parseFloat(formData.depth) : undefined,
+            subcategory: formData.subcategory
         } as any)
         
         if (imageFiles.length > 0) {
@@ -193,6 +196,7 @@ export default function LotsPage() {
         title: "",
         year: "",
         category: "Painting",
+        subcategory: "",
         subject: "Landscape",
         description: "",
         estimate_low: "",
@@ -219,6 +223,7 @@ export default function LotsPage() {
         title: lot.title,
         year: lot.year_of_production?.toString() || "",
         category: lot.category,
+        subcategory: lot.subcategory || "",
         subject: "Landscape", 
         description: lot.description || "",
         estimate_low: lot.estimate_low.toString(),
@@ -257,9 +262,9 @@ export default function LotsPage() {
               })
           }
           loadData() 
-          toast({ title: "Image deleted" })
+          toast({ title: "Media deleted" })
       } catch (error) {
-          toast({ variant: "destructive", title: "Failed to delete image" })
+          toast({ variant: "destructive", title: "Failed to delete media" })
       }
   }
 
@@ -316,7 +321,7 @@ export default function LotsPage() {
     const is3D = ["Sculpture", "Carving"].includes(formData.category)
 
     return (
-    <div className="space-y-4">
+    <div className="space-y-4 text-muted-foreground">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Lot Number</Label>
@@ -351,6 +356,8 @@ export default function LotsPage() {
             onChange={(e) => setFormData({ ...formData, year: e.target.value })}
           />
         </div>
+        
+        {/* Category & Subcategory */}
         <div className="space-y-2">
           <Label>Category</Label>
           <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
@@ -365,12 +372,22 @@ export default function LotsPage() {
           </Select>
         </div>
         
-
+        <div className="space-y-2">
+            <Label>Subcategory</Label>
+            <Input 
+                placeholder="e.g. Abstract, Portrait, Bronze" 
+                value={formData.subcategory} 
+                onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })} 
+            />
+            <p className="text-[10px] text-muted-foreground">Type to create or edit subcategory.</p>
+        </div>
+        
+        {/* Dynamic Fields */}
         {isArt2D && (
             <div className="space-y-2">
                 <Label>Medium</Label>
                 <Input 
-                    placeholder={formData.category === 'Drawing' ? "e.g. Pencil, Ink, Charcoal" : "e.g. Oil, Acrylic, Watercolour"}
+                    placeholder="e.g. Oil, Acrylic, Pencil"
                     value={formData.medium} 
                     onChange={(e) => setFormData({ ...formData, medium: e.target.value })} 
                 />
@@ -394,7 +411,7 @@ export default function LotsPage() {
             <div className="space-y-2">
                 <Label>Material</Label>
                 <Input 
-                    placeholder={formData.category === 'Carving' ? "e.g. Oak, Pine" : "e.g. Bronze, Marble"}
+                    placeholder="e.g. Bronze, Oak"
                     value={formData.material} 
                     onChange={(e) => setFormData({ ...formData, material: e.target.value })} 
                 />
@@ -408,12 +425,12 @@ export default function LotsPage() {
                 <Input type="number" step="0.1" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} />
             </div>
             <div className="space-y-2">
-                <Label>Length (cm)</Label> {/* User requested 'Length' be the 2nd dim */}
+                <Label>Length (cm)</Label>
                 <Input type="number" step="0.1" value={formData.width} onChange={(e) => setFormData({ ...formData, width: e.target.value })} />
             </div>
             {is3D && (
                 <div className="space-y-2">
-                    <Label>Width (cm)</Label> {/* User requested 'Width' as 3rd dim for sculptures */}
+                    <Label>Width (cm)</Label>
                     <Input type="number" step="0.1" value={formData.depth} onChange={(e) => setFormData({ ...formData, depth: e.target.value })} />
                 </div>
             )}
@@ -489,40 +506,88 @@ export default function LotsPage() {
         </div>
         <div className="space-y-2 md:col-span-2">
             <Label>Description</Label>
-            <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={4} />
+            <Textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            rows={4}
+            />
         </div>
         
+        {/* Image/Video Section */}
         <div className="space-y-2 md:col-span-2">
-          <Label>Images</Label>
+          <Label>Media (Images & Video)</Label>
+          
+          {/* Upload Input */}
           <div className="flex items-center gap-2 mb-3">
-             <Input type="file" multiple accept="image/*" onChange={handleImageSelect} />
+             <Input 
+                type="file" 
+                multiple 
+                accept="image/*,video/mp4,video/quicktime,video/webm" 
+                onChange={handleImageSelect}
+             />
           </div>
+          
+          {/* Media + New Previews */}
           {( (editingLot?.images && editingLot.images.length > 0) || previewImages.length > 0 ) && (
             <div className="grid grid-cols-5 gap-2 border p-2 rounded bg-muted/10">
                 {editingLot?.images?.map(img => (
                    <div key={img.id} className="relative group aspect-square bg-background rounded overflow-hidden border shadow-sm">
-                     <img src={img.thumbnail_url || img.image_url} className="w-full h-full object-cover" alt="lot" />
-                     <button type="button" onClick={() => handleDeleteImage(img.id)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X className="h-3 w-3" /></button>
+                     {img.media_type === 'video' || img.image_url.endsWith('.mp4') ? (
+                        <div className="w-full h-full bg-black flex items-center justify-center">
+                            <Video className="text-white h-8 w-8" />
+                        </div>
+                     ) : (
+                        <img 
+                            src={img.thumbnail_url || img.image_url} 
+                            className="w-full h-full object-cover" 
+                            alt="lot"
+                        />
+                     )}
+                     
+                     <button 
+                        type="button" 
+                        onClick={() => handleDeleteImage(img.id)} 
+                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Delete existing media"
+                     >
+                       <X className="h-3 w-3" />
+                     </button>
                      <div className="absolute bottom-0 w-full bg-black/60 text-white text-[10px] text-center py-0.5">Existing</div>
                    </div>
                 ))}
+
                 {previewImages.map((src, index) => (
                   <div key={`new-${index}`} className="relative group aspect-square bg-background rounded overflow-hidden border shadow-sm">
-                    <img src={src} alt="Preview" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => removePreviewImage(index)} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X className="h-3 w-3" /></button>
+                    {imageFiles[index]?.type.startsWith('video/') ? (
+                        <video src={src} className="w-full h-full object-cover" muted />
+                    ) : (
+                        <img src={src} alt="Preview" className="w-full h-full object-cover" />
+                    )}
+                    
+                    <button 
+                        type="button" 
+                        onClick={() => removePreviewImage(index)} 
+                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove upload"
+                     >
+                       <X className="h-3 w-3" />
+                     </button>
                      <div className="absolute bottom-0 w-full bg-blue-600/70 text-white text-[10px] text-center py-0.5">New</div>
                   </div>
                 ))}
             </div>
           )}
           {!editingLot?.images?.length && previewImages.length === 0 && (
-              <p className="text-xs text-muted-foreground italic">No images selected.</p>
+              <p className="text-xs text-muted-foreground italic">No media selected.</p>
           )}
         </div>
+
       </div>
       <div className="flex gap-2">
         <Button type="submit">{submitLabel}</Button>
-        <Button type="button" variant="outline" onClick={() => editingLot ? setEditingLot(null) : setShowForm(false)}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={() => editingLot ? setEditingLot(null) : setShowForm(false)}>
+          Cancel
+        </Button>
       </div>
     </div>
     )
@@ -545,14 +610,14 @@ export default function LotsPage() {
 
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-full">
         <TabsList>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="archived">Archived</TabsTrigger>
+            <TabsTrigger value="active" className="text-muted-foreground">Active</TabsTrigger>
+            <TabsTrigger value="archived" className="text-muted-foreground">Archived</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {showForm && (
         <Card>
-          <CardHeader><CardTitle>Create New Lot</CardTitle></CardHeader>
+          <CardHeader className="text-foreground"><CardTitle>Create New Lot</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={handleCreateSubmit}>
                 {renderFormContent("Create Lot")}
@@ -563,23 +628,29 @@ export default function LotsPage() {
 
       <Dialog open={!!editingLot} onOpenChange={(open) => !open && setEditingLot(null)}>
         <DialogContent className="sm:max-w-[1000px] w-full max-h-[90vh] flex flex-col">
-          <DialogHeader><DialogTitle>Edit Lot</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Edit Lot</DialogTitle>
+          </DialogHeader>
           <div className="flex-1 overflow-y-auto p-1">
-              <form onSubmit={handleUpdateSubmit}>{renderFormContent("Save Changes")}</form>
+              <form onSubmit={handleUpdateSubmit}>
+                {renderFormContent("Save Changes")}
+              </form>
           </div>
         </DialogContent>
       </Dialog>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {lots.length === 0 && (
-            <div className="col-span-full text-center py-10 text-muted-foreground">No {viewMode} lots found.</div>
+            <div className="col-span-full text-center py-10 text-muted-foreground">
+                No {viewMode} lots found.
+            </div>
         )}
         {lots.map((lot) => (
           <Card key={lot.id} className="flex flex-col">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-base">{lot.artist}</CardTitle>
+                  <CardTitle className="text-base text-foreground">{lot.artist}</CardTitle>
                   <p className="text-sm text-muted-foreground italic">{lot.title}</p>
                   <p className="text-xs text-muted-foreground mt-1">{lot.lot_reference}</p>
                 </div>
@@ -590,7 +661,11 @@ export default function LotsPage() {
               <div className="space-y-3">
                 {lot.images?.[0] && (
                   <div className="aspect-square bg-muted rounded overflow-hidden">
-                    <img src={lot.images[0].thumbnail_url || lot.images[0].image_url} alt={lot.title} className="w-full h-full object-cover" />
+                    <img
+                      src={lot.images[0].thumbnail_url || lot.images[0].image_url}
+                      alt={lot.title}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                 )}
                 <div className="space-y-2 text-sm">
@@ -606,29 +681,56 @@ export default function LotsPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-2 border-t pt-4">
+               
                {viewMode === "active" ? (
                    <>
                     <div className="flex w-full gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => startEditing(lot)}><Pencil className="h-3 w-3 mr-1" /> Edit</Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => startEditing(lot)}>
+                            <Pencil className="h-3 w-3 mr-1" /> Edit
+                        </Button>
+                        
                         <AlertDialog>
-                            <AlertDialogTrigger asChild><Button size="sm" className="flex-1"><Trash2 className="h-3 w-3 mr-1" /> Delete</Button></AlertDialogTrigger>
+                            <AlertDialogTrigger asChild>
+                                <Button size="sm" className="flex-1">
+                                    <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                </Button>
+                            </AlertDialogTrigger>
                             <AlertDialogContent>
-                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this lot.</AlertDialogDescription></AlertDialogHeader>
-                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(lot.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete this lot. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(lot.id)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
                     </div>
+                    
                     <div className="flex w-full gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => handleArchive(lot.id)}><Archive className="h-3 w-3 mr-1" /> Archive</Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleArchive(lot.id)}>
+                      <Archive className="h-3 w-3 mr-1" /> Archive
+                        </Button>
                         {lot.status === "Pending" && (
                             <Dialog>
-                            <DialogTrigger asChild><Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedLot(lot)}><Calendar className="h-4 w-4 mr-2" /> Auction</Button></DialogTrigger>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedLot(lot)}>
+                                <Calendar className="h-4 w-4 mr-2" /> Auction
+                                </Button>
+                            </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader><DialogTitle>Assign Auction</DialogTitle></DialogHeader>
                                 <div className="space-y-4">
                                 <Select value={assignAuctionId} onValueChange={setAssignAuctionId}>
                                     <SelectTrigger><SelectValue placeholder="Select auction..." /></SelectTrigger>
-                                    <SelectContent>{auctions.filter((a) => a.status === "Upcoming").map((auction) => (<SelectItem key={auction.id} value={String(auction.id)}>{auction.title}</SelectItem>))}</SelectContent>
+                                    <SelectContent>
+                                    {auctions.filter((a) => a.status === "Upcoming").map((auction) => (
+                                        <SelectItem key={auction.id} value={String(auction.id)}>{auction.title}</SelectItem>
+                                        ))}
+                                    </SelectContent>
                                 </Select>
                                 <Button onClick={handleAssignAuction} className="w-full">Assign</Button>
                                 </div>
@@ -639,12 +741,26 @@ export default function LotsPage() {
                    </>
                ) : (
                     <div className="flex w-full gap-2">
-                       <Button variant="outline" size="sm" className="flex-1" onClick={() => handleRestore(lot.id)}><RefreshCcw className="h-3 w-3 mr-1" /> Restore</Button>
+                       <Button variant="outline" size="sm" className="flex-1" onClick={() => handleRestore(lot.id)}>
+                           <RefreshCcw className="h-3 w-3 mr-1" /> Restore
+                       </Button>
                        <AlertDialog>
-                            <AlertDialogTrigger asChild><Button variant="destructive" size="sm" className="flex-1"><Trash2 className="h-3 w-3 mr-1" /> Delete</Button></AlertDialogTrigger>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" className="flex-1">
+                                    <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                </Button>
+                            </AlertDialogTrigger>
                             <AlertDialogContent>
-                                <AlertDialogHeader><AlertDialogTitle>Permanently Delete?</AlertDialogTitle><AlertDialogDescription>This will permanently remove this lot from the database.</AlertDialogDescription></AlertDialogHeader>
-                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(lot.id)}>Delete Permanently</AlertDialogAction></AlertDialogFooter>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Permanently Delete?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently remove this lot from the database.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(lot.id)}>Delete Permanently</AlertDialogAction>
+                                </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
                     </div>

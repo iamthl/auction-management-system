@@ -38,7 +38,7 @@ def create_mock_data():
         print(f"Database Error: {e}")
         return
     
-    # --- 1. CLIENTS DATA (Merged Lists) ---
+    # CLIENTS
     
     admin_pass = get_password_hash("admin123")
     seller_pass = get_password_hash("seller123")
@@ -48,13 +48,7 @@ def create_mock_data():
         # Admin
         ("Admin Staff", "Fotherbys HQ", "admin@fotherbys.com", "000", "Joint", "", admin_pass, 1),
         
-        # Original Sellers (from setup_database.py)
-        ('Lady Victoria Pembroke', 'Pembroke Manor, Hampshire', 'victoria@pembroke-estate.co.uk', '+44 20 7946 0958', 'Seller', '', seller_pass, 0),
-        ('Count Alessandro di Medici', 'Palazzo Medici, Florence', 'alessandro@medici-collection.it', '+39 055 123 4567', 'Seller', '', seller_pass, 0),
-        ('Mrs. Charlotte Whitmore', 'Upper East Side, New York', 'charlotte@whitmore-gallery.com', '+1 212 555 0123', 'Seller', '', seller_pass, 0),
-        ('Sir Henry Ashford', 'Ashford Hall, Yorkshire', 'henry@ashford-holdings.co.uk', '+44 20 7946 1234', 'Seller', '', seller_pass, 0),
-
-        # Extra Mock Clients (from create_mock_data.py)
+        # Sellers & Buyers
         ("Lady Margaret Thornbury", "15 Belgrave Square, London SW1X 8PS", "m.thornbury@example.com", "+44 20 7235 8000", "Seller", "GB29 NWBK 6016 1331 9268 19", seller_pass, 0),
         ("Sir Robert Ashford", "Ashford Manor, Cotswolds GL54 1NN", "r.ashford@example.com", "+44 1451 820123", "Seller", "GB94 BARC 2004 0386 5432 10", seller_pass, 0),
         ("James Wellington III", "432 Park Avenue, New York, NY 10022", "j.wellington@example.com", "+1 212 555 0198", "Buyer", "US64 SVBK US6S 0000 0123 4567 890", buyer_pass, 0),
@@ -69,7 +63,7 @@ def create_mock_data():
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, client)
     
-    # --- 2. AUCTIONS DATA ---
+    # AUCTIONS DATA 
     auctions_data = [
         ("21st Century British Art", "London", (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d"), "7:00pm", "Physical", "Contemporary British artists including landscapes and portraits"),
         ("Post-War European Masters", "Paris", (datetime.now() + timedelta(days=45)).strftime("%Y-%m-%d"), "7:00pm", "Physical", "Major works from post-war European artists"),
@@ -87,7 +81,7 @@ def create_mock_data():
         """, auction)
         auction_ids.append(cursor.lastrowid)
     
-    # LOTS DATA
+    # LOTS DATA   
     # PAINTINGS
     paintings = [
         {
@@ -192,7 +186,7 @@ def create_mock_data():
         },
         {
             "title": "Celtic Cross", "artist": "Unknown", "year": 1850, "category": "Carving",
-            "subject": "Other", "material": "Beech", "height": 45, "length": 30, "width": 15, "weight": 8,
+            "subject": "Religious", "material": "Beech", "height": 45, "length": 30, "width": 15, "weight": 8,
             "description": "Victorian revival carved beech cross with traditional Celtic knotwork patterns.",
             "estimate_low": 5500, "estimate_high": 8000, "reserve": 5000, "seller_id": 2
         },
@@ -232,14 +226,11 @@ def create_mock_data():
             if status == "Sold":
                 sold_price = int(lot["estimate_low"] + random.uniform(0, lot["estimate_high"] - lot["estimate_low"]))
         
-        # Map fields to DB columns
         medium = lot.get("medium") or lot.get("image_type")
         
         height = lot.get("height")
         width = lot.get("width")
         
-        # 'length' in dictionary -> 'width' in DB
-        # 'width' in dictionary -> 'depth' in DB (for 3D items)
         length_val = lot.get("length")
         
         db_width = width 
@@ -259,6 +250,7 @@ def create_mock_data():
         is_framed = 1 if lot.get("framed") else 0
         material = lot.get("material")
         weight = lot.get("weight")
+        subcategory = lot.get("subject")
 
         cursor.execute("""
             INSERT INTO lots (
@@ -266,14 +258,14 @@ def create_mock_data():
                 description, dimensions, 
                 estimate_low, estimate_high, reserve_price, 
                 status, seller_id, auction_id, triage_status, sold_price,
-                medium, material, weight, height, width, depth, is_framed
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                medium, material, weight, height, width, depth, is_framed, subcategory
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             lot_reference, lot["artist"], lot["title"], lot["year"], lot["category"],
             lot["description"], dimensions_str,
             lot["estimate_low"], lot["estimate_high"], lot["reserve"], 
             status, lot["seller_id"], auction_id, suggested_stream, sold_price,
-            medium, material, weight, height, db_width, db_depth, is_framed
+            medium, material, weight, height, db_width, db_depth, is_framed, subcategory
         ))
         
         lot_id = cursor.lastrowid

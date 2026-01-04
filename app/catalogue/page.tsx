@@ -8,24 +8,36 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import { Search, Calendar, MapPin, Tag } from "lucide-react"
+import { Search, Calendar, MapPin, Tag, Filter } from "lucide-react"
 
 export default function CataloguePage() {
   const [lots, setLots] = useState<Lot[]>([])
   const [categories, setCategories] = useState<string[]>([])
+  const [subcategories, setSubcategories] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [locationFilter, setLocationFilter] = useState<string>("all")
   const [auctionTypeFilter, setAuctionTypeFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string>("all")
+  
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.getCategories().then(setCategories)
   }, [])
 
+  // useEffect(() => {
+  //   if (categoryFilter && categoryFilter !== "all") {
+  //       api.getSubcategories(categoryFilter).then(setSubcategories)
+  //   } else {
+  //       setSubcategories([])
+  //   }
+  //   setSubcategoryFilter("all")
+  // }, [categoryFilter])
+
   useEffect(() => {
     loadCatalogue()
-  }, [searchQuery, locationFilter, auctionTypeFilter, categoryFilter])
+  }, [searchQuery, locationFilter, auctionTypeFilter, categoryFilter, subcategoryFilter]) // Added subcategoryFilter dependency
 
   const loadCatalogue = async () => {
     setLoading(true)
@@ -35,6 +47,7 @@ export default function CataloguePage() {
       if (locationFilter !== "all") params.location = locationFilter
       if (auctionTypeFilter !== "all") params.auction_type = auctionTypeFilter
       if (categoryFilter !== "all") params.category = categoryFilter
+      if (subcategoryFilter !== "all") params.subcategory = subcategoryFilter
 
       const data = await api.searchCatalogue(params)
       setLots(data)
@@ -56,6 +69,7 @@ export default function CataloguePage() {
         </div>
 
         <div className="mb-8 space-y-4">
+          {/* Search Bar */}
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
@@ -68,7 +82,8 @@ export default function CataloguePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-muted-foreground">
+          {/* Filters Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-muted-foreground">
             <Select value={locationFilter} onValueChange={setLocationFilter}>
               <SelectTrigger>
                 <MapPin className="h-4 w-4 mr-2" />
@@ -108,6 +123,25 @@ export default function CataloguePage() {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* {subcategories.length > 0 ? (
+                <Select value={subcategoryFilter} onValueChange={setSubcategoryFilter}>
+                  <SelectTrigger>
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Subcategory" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subcategories</SelectItem>
+                    {subcategories.map((sub) => (
+                      <SelectItem key={sub} value={sub}>
+                        {sub}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+            ) : (
+                <div className="hidden md:block"></div> 
+            )} */}
           </div>
 
           <div className="flex gap-2 text-sm text-muted-foreground">
@@ -126,7 +160,7 @@ export default function CataloguePage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {lots.map((lot) => (
               <Link key={lot.id} href={`/catalogue/${lot.id}`}>
-                <Card className="group overflow-hidden hover:shadow-lg transition-shadow">
+                <Card className="group overflow-hidden hover:shadow-lg transition-shadow h-full">
                   <div className="aspect-square bg-muted relative overflow-hidden">
                     {lot.images?.[0] ? (
                       <img
@@ -135,12 +169,8 @@ export default function CataloguePage() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <img
-                          src={`/ceholder-svg-height-400.jpg?height=400&width=400`}
-                          alt={lot.title}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground text-sm">
+                        No Image
                       </div>
                     )}
                     <div className="absolute top-4 right-4 flex gap-2">
@@ -151,12 +181,19 @@ export default function CataloguePage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-muted-foreground">{lot.lot_reference}</p>
-                        <Badge variant="secondary" className="text-xs">
-                          {lot.category}
-                        </Badge>
+                        <div className="flex gap-1">
+                            <Badge variant="secondary" className="text-xs">
+                            {lot.category}
+                            </Badge>
+                            {lot.subcategory && (
+                                <Badge variant="outline" className="text-xs bg-background/50">
+                                {lot.subcategory}
+                                </Badge>
+                            )}
+                        </div>
                       </div>
-                      <h3 className="font-semibold text-lg text-foreground">{lot.artist}</h3>
-                      <p className="text-sm italic text-muted-foreground">{lot.title}</p>
+                      <h3 className="font-semibold text-lg text-foreground truncate">{lot.artist}</h3>
+                      <p className="text-sm italic text-muted-foreground truncate">{lot.title}</p>
                       {lot.year_of_production && (
                         <p className="text-sm text-muted-foreground">{lot.year_of_production}</p>
                       )}
