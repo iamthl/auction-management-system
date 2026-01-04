@@ -308,6 +308,7 @@ export const api = {
     location?: string
     auction_type?: string
     category?: string
+    subcategory?: string
     auction_date?: string
   }): Promise<Lot[]> {
     const query = new URLSearchParams(params as any).toString()
@@ -319,6 +320,15 @@ export const api = {
   async getCategories(): Promise<string[]> {
     const res = await fetch(`${API_BASE_URL}/api/categories`)
     if (!res.ok) throw new Error("Failed to fetch categories")
+    return res.json()
+  },
+
+  async getSubcategories(category?: string): Promise<string[]> {
+    const url = category 
+        ? `${API_BASE_URL}/api/subcategories?category=${encodeURIComponent(category)}`
+        : `${API_BASE_URL}/api/subcategories`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error("Failed to fetch subcategories")
     return res.json()
   },
 

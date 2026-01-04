@@ -26,14 +26,14 @@ export default function CataloguePage() {
     api.getCategories().then(setCategories)
   }, [])
 
-  // useEffect(() => {
-  //   if (categoryFilter && categoryFilter !== "all") {
-  //       api.getSubcategories(categoryFilter).then(setSubcategories)
-  //   } else {
-  //       setSubcategories([])
-  //   }
-  //   setSubcategoryFilter("all")
-  // }, [categoryFilter])
+  useEffect(() => {
+    if (categoryFilter && categoryFilter !== "all") {
+        api.getSubcategories(categoryFilter).then(setSubcategories)
+    } else {
+        setSubcategories([])
+    }
+    setSubcategoryFilter("all")
+  }, [categoryFilter])
 
   useEffect(() => {
     loadCatalogue()
@@ -124,7 +124,7 @@ export default function CataloguePage() {
               </SelectContent>
             </Select>
 
-            {/* {subcategories.length > 0 ? (
+            {subcategories.length > 0 ? (
                 <Select value={subcategoryFilter} onValueChange={setSubcategoryFilter}>
                   <SelectTrigger>
                     <Filter className="h-4 w-4 mr-2" />
@@ -141,7 +141,7 @@ export default function CataloguePage() {
                 </Select>
             ) : (
                 <div className="hidden md:block"></div> 
-            )} */}
+            )}
           </div>
 
           <div className="flex gap-2 text-sm text-muted-foreground">

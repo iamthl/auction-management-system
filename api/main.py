@@ -786,7 +786,7 @@ def search_catalogue(
     if category:
         query += ' AND l.category = ?'
         params.append(category)
-    if subcategory: # NEW FILTER
+    if subcategory: 
         query += ' AND l.subcategory = ?'
         params.append(subcategory)
     
