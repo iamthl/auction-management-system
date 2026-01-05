@@ -217,13 +217,31 @@ class Token(BaseModel):
     email: Optional[str] = None
 
 class ClientRegister(BaseModel):
-    name: str
+    title: str
+    first_name: str
+    last_name: str
     email: EmailStr
     password: str
+    phone: str
+    address: str
+    client_type: str = "Buyer"
+    bank_account_number: Optional[str] = None
+    bank_sort_code: Optional[str] = None
+
+class ClientResponse(BaseModel):
+    id: int
+    title: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    name: str 
+    email: str
     phone: Optional[str] = None
     address: Optional[str] = None
-    client_type: str = "Buyer" 
-
+    client_type: str
+    bank_account_number: Optional[str] = None
+    bank_sort_code: Optional[str] = None
+    is_approved: bool
+    is_staff: bool
 class CommissionCalculation(BaseModel):
     hammer_price: float
     buyers_premium_rate: float = 0.10
@@ -244,10 +262,23 @@ def register(client: ClientRegister, db: sqlite3.Connection = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     
     hashed_password = get_password_hash(client.password)
+    
+    full_name = f"{client.title} {client.first_name} {client.last_name}".strip()
+    
+    is_approved = 0 
+
     cursor.execute('''
-        INSERT INTO clients (name, email, password_hash, phone, address, client_type, is_staff)
-        VALUES (?, ?, ?, ?, ?, ?, 0)
-    ''', (client.name, client.email, hashed_password, client.phone, client.address, client.client_type))
+        INSERT INTO clients (
+            title, first_name, last_name, name, email, password_hash, 
+            phone, address, client_type, bank_account_number, bank_sort_code, 
+            is_approved, is_staff
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    ''', (
+        client.title, client.first_name, client.last_name, full_name, client.email, hashed_password,
+        client.phone, client.address, client.client_type, 
+        client.bank_account_number, client.bank_sort_code, is_approved
+    ))
     db.commit()
     
     access_token = create_access_token(data={"sub": client.email})
@@ -256,7 +287,7 @@ def register(client: ClientRegister, db: sqlite3.Connection = Depends(get_db)):
         "token_type": "bearer",
         "user_type": client.client_type,
         "is_staff": False,
-        "name": client.name,
+        "name": full_name,
         "email": client.email
     }
 
@@ -289,6 +320,30 @@ def read_users_me(current_user: dict = Depends(get_current_user)):
     user_safe = current_user.copy()
     del user_safe['password_hash']
     return user_safe
+
+@app.get("/api/clients", response_model=List[ClientResponse])
+def get_all_clients(db: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can view client records")
+    
+    cursor = db.cursor()
+    cursor.execute('''
+        SELECT id, title, first_name, last_name, name, email, phone, address, 
+               client_type, bank_account_number, bank_sort_code, is_approved, is_staff 
+        FROM clients 
+        ORDER BY last_name, first_name
+    ''')
+    return [dict(row) for row in cursor.fetchall()]
+
+@app.put("/api/clients/{client_id}/approve")
+def approve_client(client_id: int, db: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can approve clients")
+    
+    cursor = db.cursor()
+    cursor.execute("UPDATE clients SET is_approved = 1 WHERE id = ?", (client_id,))
+    db.commit()
+    return {"message": "Client approved"}
 
 # AUCTIONS
 @app.post("/api/auctions", response_model=AuctionResponse)

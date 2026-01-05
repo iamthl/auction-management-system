@@ -346,4 +346,12 @@ export const api = {
     if (!res.ok) throw new Error("Failed to fetch auction")
     return res.json()
   },
+
+  async getClients(): Promise<Client[]> {
+    const res = await fetch(`${API_BASE_URL}/api/clients`, {
+      headers: getAuthHeaders()
+    })
+    if (!res.ok) throw new Error("Failed to fetch clients")
+    return res.json()
+  },
 }

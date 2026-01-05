@@ -44,24 +44,24 @@ def create_mock_data():
     seller_pass = get_password_hash("seller123")
     buyer_pass = get_password_hash("buyer123")
 
+    # Format: (Title, First, Last, FullName, Address, Email, Phone, Type, AccNo, Sort, PassHash, Staff, Approved)
     clients_data = [
-        # Admin
-        ("Admin Staff", "Fotherbys HQ", "admin@fotherbys.com", "000", "Joint", "", admin_pass, 1),
-        
-        # Sellers & Buyers
-        ("Lady Margaret Thornbury", "15 Belgrave Square, London SW1X 8PS", "m.thornbury@example.com", "+44 20 7235 8000", "Seller", "GB29 NWBK 6016 1331 9268 19", seller_pass, 0),
-        ("Sir Robert Ashford", "Ashford Manor, Cotswolds GL54 1NN", "r.ashford@example.com", "+44 1451 820123", "Seller", "GB94 BARC 2004 0386 5432 10", seller_pass, 0),
-        ("James Wellington III", "432 Park Avenue, New York, NY 10022", "j.wellington@example.com", "+1 212 555 0198", "Buyer", "US64 SVBK US6S 0000 0123 4567 890", buyer_pass, 0),
-        ("Madame Élise Dubois", "8 Avenue Montaigne, 75008 Paris", "e.dubois@example.com", "+33 1 53 67 89 00", "Seller", "FR14 2004 1010 0505 0001 3M02 606", seller_pass, 0),
-        ("Mr. Chen Wei", "88 Nathan Road, Kowloon, Hong Kong", "c.wei@example.com", "+852 2123 4567", "Buyer", "", buyer_pass, 0),
+        ("Mr", "Admin", "Staff", "Admin Staff", "Fotherbys HQ", "admin@fotherbys.com", "000", "Joint", "", "", admin_pass, 1, 1),
+        ("Lady", "Margaret", "Thornbury", "Lady Margaret Thornbury", "15 Belgrave Square, London SW1X 8PS", "m.thornbury@example.com", "+44 20 7235 8000", "Seller", "12345678", "20-40-60", seller_pass, 0, 1),
+        ("Sir", "Robert", "Ashford", "Sir Robert Ashford", "Ashford Manor, Cotswolds GL54 1NN", "r.ashford@example.com", "+44 1451 820123", "Seller", "87654321", "40-30-20", seller_pass, 0, 1),
+        ("Mr", "James", "Wellington", "James Wellington III", "432 Park Avenue, New York, NY 10022", "j.wellington@example.com", "+1 212 555 0198", "Buyer", "11223344", "10-10-10", buyer_pass, 0, 0),
+        ("Madame", "Élise", "Dubois", "Madame Élise Dubois", "8 Avenue Montaigne, 75008 Paris", "e.dubois@example.com", "+33 1 53 67 89 00", "Seller", "55667788", "30-30-30", seller_pass, 0, 1),
+        ("Mr", "Chen", "Wei", "Mr. Chen Wei", "88 Nathan Road, Kowloon, Hong Kong", "c.wei@example.com", "+852 2123 4567", "Buyer", "", "", buyer_pass, 0, 1),
     ]
     
-    for client in clients_data:
-        # Tuple structure: (Name, Address, Email, Phone, Type, Bank, PassHash, IsStaff)
+    for c in clients_data:
         cursor.execute("""
-            INSERT INTO clients (name, address, email, phone, client_type, bank_details, password_hash, is_staff)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, client)
+            INSERT INTO clients (
+                title, first_name, last_name, name, address, email, phone, 
+                client_type, bank_account_number, bank_sort_code, password_hash, is_staff, is_approved
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, c)
     
     # AUCTIONS DATA 
     auctions_data = [
@@ -82,6 +82,7 @@ def create_mock_data():
         auction_ids.append(cursor.lastrowid)
     
     # LOTS DATA   
+    
     # PAINTINGS
     paintings = [
         {
@@ -283,7 +284,7 @@ def create_mock_data():
     conn.close()
     
     print(f" Mock data created successfully in {db_path}!")
-    print(f"   - {len(clients_data)} clients (merged)")
+    print(f"   - {len(clients_data)} clients")
     print(f"   - {len(auctions_data)} auctions")
     print(f"   - {len(all_lots)} lots")
 

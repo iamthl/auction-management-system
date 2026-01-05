@@ -13,10 +13,16 @@ import { useToast } from "@/hooks/use-toast"
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
-    name: "",
+    title: "",
+    first_name: "",
+    last_name: "",
     email: "",
     password: "",
-    client_type: "Buyer"
+    phone: "",
+    address: "",
+    client_type: "Buyer",
+    bank_account_number: "",
+    bank_sort_code: ""
   })
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
@@ -53,72 +59,110 @@ export default function RegisterPage() {
     }
   }
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData({ ...formData, [e.target.id]: e.target.value })
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <PublicHeader />
       <div className="flex-1 flex items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-2xl">
           <CardHeader>
             <CardTitle>Create Account</CardTitle>
-            <CardDescription>Register to bid and consign items</CardDescription>
+            <CardDescription>Register to bid and consign items. Approval required for trading.</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input 
-                  id="name" 
-                  required 
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                />
+            <CardContent className="space-y-6">
+              
+              {/* Personal Details */}
+              <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-muted-foreground border-b pb-1">Personal Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2 md:col-span-1">
+                        <Label htmlFor="title">Title</Label>
+                        <Select onValueChange={(val) => setFormData({...formData, title: val})}>
+                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Mr">Mr</SelectItem>
+                                <SelectItem value="Mrs">Mrs</SelectItem>
+                                <SelectItem value="Ms">Ms</SelectItem>
+                                <SelectItem value="Dr">Dr</SelectItem>
+                                <SelectItem value="Prof">Prof</SelectItem>
+                                <SelectItem value="Sir">Sir</SelectItem>
+                                <SelectItem value="Lady">Lady</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2 md:col-span-1">
+                        <Label htmlFor="first_name">First Name</Label>
+                        <Input id="first_name" required value={formData.first_name} onChange={handleChange} />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="last_name">Surname</Label>
+                        <Input id="last_name" required value={formData.last_name} onChange={handleChange} />
+                    </div>
+                  </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  required 
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                />
+
+              {/* Contact Info */}
+              <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-muted-foreground border-b pb-1">Contact Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Contact E-mail</Label>
+                        <Input id="email" type="email" required value={formData.email} onChange={handleChange} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="phone">Contact Telephone</Label>
+                        <Input id="phone" required value={formData.phone} onChange={handleChange} />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="address">Contact Address</Label>
+                        <Input id="address" required value={formData.address} onChange={handleChange} placeholder="Street, City, Postcode" />
+                    </div>
+                  </div>
               </div>
-              <div className="space-y-2">
+
+              {/* Account Status & Banking */}
+              <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-muted-foreground border-b pb-1">Account Setup</h3>
+                  <div className="space-y-2">
+                    <Label>Client Status</Label>
+                    <Select defaultValue="Buyer" onValueChange={(val) => setFormData({...formData, client_type: val})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Buyer">Buyer</SelectItem>
+                        <SelectItem value="Seller">Seller</SelectItem>
+                        <SelectItem value="Joint">Joint (Buyer & Seller)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="bank_account_number">Bank Account No.</Label>
+                        <Input id="bank_account_number" value={formData.bank_account_number} onChange={handleChange} placeholder="Optional for Buyers" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="bank_sort_code">Bank Sort Code</Label>
+                        <Input id="bank_sort_code" value={formData.bank_sort_code} onChange={handleChange} placeholder="XX-XX-XX" />
+                    </div>
+                  </div>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t">
                 <Label htmlFor="password">Password</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  required 
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                />
+                <Input id="password" type="password" required value={formData.password} onChange={handleChange} />
               </div>
-              <div className="space-y-2">
-                <Label>I am interested in</Label>
-                <Select 
-                  defaultValue="Buyer" 
-                  onValueChange={(val) => setFormData({...formData, client_type: val})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Buyer">Buying</SelectItem>
-                    <SelectItem value="Seller">Selling</SelectItem>
-                    <SelectItem value="Joint">Both</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+
             </CardContent>
             <CardFooter className="flex flex-col space-y-4 pt-4">
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Sign Up"}
+                {isLoading ? "Creating account..." : "Register"}
               </Button>
               <div className="text-sm text-center text-muted-foreground">
-                Already have an account?{" "}
-                <Link href="/login" className="text-primary hover:underline">
-                  Sign in
-                </Link>
+                Already have an account? <Link href="/login" className="text-primary hover:underline">Sign in</Link>
               </div>
             </CardFooter>
           </form>

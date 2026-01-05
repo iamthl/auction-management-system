@@ -49,7 +49,7 @@ def init_database():
         artist TEXT NOT NULL,
         title TEXT NOT NULL,
         category TEXT DEFAULT 'Fine Art',
-        subcategory TEXT, 
+        subcategory TEXT,
         dimensions TEXT,
         framing_details TEXT,
         year_of_production INTEGER,
@@ -74,7 +74,6 @@ def init_database():
         width REAL,
         depth REAL,
         is_framed BOOLEAN DEFAULT 0,
-
         FOREIGN KEY (auction_id) REFERENCES auctions(id) ON DELETE SET NULL,
         FOREIGN KEY (seller_id) REFERENCES clients(id) ON DELETE SET NULL
     )
@@ -94,16 +93,22 @@ def init_database():
     )
     ''')
     
+    # Clients
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
+        title TEXT,
+        first_name TEXT,
+        last_name TEXT,
+        name TEXT,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         phone TEXT,
         address TEXT,
-        bank_details TEXT,
+        bank_account_number TEXT,
+        bank_sort_code TEXT,
         client_type TEXT NOT NULL CHECK(client_type IN ('Buyer', 'Seller', 'Joint')),
+        is_approved BOOLEAN DEFAULT 0,
         is_staff BOOLEAN DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -145,7 +150,13 @@ def init_database():
         ("lots", "is_framed", "INTEGER DEFAULT 0"),
         ("lots", "is_archived", "INTEGER DEFAULT 0"),
         ("auctions", "is_archived", "INTEGER DEFAULT 0"),
-        ("lot_images", "media_type", "TEXT DEFAULT 'image'") 
+        ("lot_images", "media_type", "TEXT DEFAULT 'image'"),
+        ("clients", "title", "TEXT"),
+        ("clients", "first_name", "TEXT"),
+        ("clients", "last_name", "TEXT"),
+        ("clients", "bank_account_number", "TEXT"),
+        ("clients", "bank_sort_code", "TEXT"),
+        ("clients", "is_approved", "BOOLEAN DEFAULT 0")
     ]
     
     for table, col, col_type in migrations:
@@ -160,7 +171,7 @@ def init_database():
     conn.commit()
     print("✓ Database schema updated successfully")
     
-    # Seed Admin Data
+    # Seed Data
     seed_data(cursor, conn)
     
     conn.close()
@@ -168,9 +179,10 @@ def init_database():
 def seed_data(cursor, conn):
     """Seed database with basic initial data"""
     admin_hash = get_password_hash("admin123")
+    
     cursor.execute('''
-    INSERT OR IGNORE INTO clients (name, email, password_hash, client_type, is_staff)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT OR IGNORE INTO clients (name, email, password_hash, client_type, is_staff, is_approved)
+    VALUES (?, ?, ?, ?, ?, 1)
     ''', ('Admin Staff', 'admin@fotherbys.com', admin_hash, 'Joint', 1))
     
     conn.commit()
