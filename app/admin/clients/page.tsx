@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Mail, Phone, MapPin, User, CheckCircle, Filter } from "lucide-react"
+import { Search, Mail, Phone, MapPin, User, CheckCircle, Filter, ShoppingBag, Gavel } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface ExtendedClient extends Client {
@@ -20,13 +20,16 @@ interface ExtendedClient extends Client {
     bank_account_number?: string
     bank_sort_code?: string
     is_approved?: boolean
+    items_bought?: number
+    items_sold?: number
+    total_spent?: number
+    total_earned?: number
 }
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<ExtendedClient[]>([])
   const [filteredClients, setFilteredClients] = useState<ExtendedClient[]>([])
   
-  // Filter States
   const [searchQuery, setSearchQuery] = useState("")
   const [clientTypeFilter, setClientTypeFilter] = useState("all")
   
@@ -84,6 +87,10 @@ export default function ClientsPage() {
       }
   }
 
+  const formatCurrency = (val?: number) => {
+      return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(val || 0)
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -94,22 +101,9 @@ export default function ClientsPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            {/* <CardTitle className="hidden md:block">Client Records</CardTitle> */}
+            <CardTitle className="hidden md:block">Client Records</CardTitle>
             
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-
-              {/* Search Bar */}
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search clients..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-
-              {/* Client Type Filter */}
               <Select value={clientTypeFilter} onValueChange={setClientTypeFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -122,6 +116,16 @@ export default function ClientsPage() {
                   <SelectItem value="Joint">Joint</SelectItem>
                 </SelectContent>
               </Select>
+
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search clients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -135,9 +139,9 @@ export default function ClientsPage() {
                   <TableHead>Full Name</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Contact Details</TableHead>
+                  <TableHead>Activity</TableHead> {/* NEW COLUMN */}
                   <TableHead>Banking</TableHead>
                   <TableHead>Approved?</TableHead>
-                  <TableHead>Role</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -176,14 +180,31 @@ export default function ClientsPage() {
                               {client.phone}
                             </div>
                           )}
-                          {client.address && (
-                             <div className="flex items-center gap-2 max-w-[200px] truncate" title={client.address}>
-                                <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
-                                {client.address}
-                             </div>
-                          )}
                         </div>
                       </TableCell>
+                      
+                      <TableCell>
+                          <div className="space-y-1 text-sm">
+                              {(client.items_bought || 0) > 0 && (
+                                  <div className="flex items-center text-green-700" title="Total Bought">
+                                      <ShoppingBag className="h-3 w-3 mr-1" />
+                                      <span className="font-medium">{client.items_bought}</span>
+                                      <span className="text-muted-foreground ml-1">({formatCurrency(client.total_spent)})</span>
+                                  </div>
+                              )}
+                              {(client.items_sold || 0) > 0 && (
+                                  <div className="flex items-center text-blue-700" title="Total Sold">
+                                      <Gavel className="h-3 w-3 mr-1" />
+                                      <span className="font-medium">{client.items_sold}</span>
+                                      <span className="text-muted-foreground ml-1">({formatCurrency(client.total_earned)})</span>
+                                  </div>
+                              )}
+                              {!(client.items_bought || 0) && !(client.items_sold || 0) && (
+                                  <span className="text-muted-foreground text-xs italic">-</span>
+                              )}
+                          </div>
+                      </TableCell>
+
                       <TableCell>
                         {client.bank_sort_code ? (
                             <div className="text-xs">
@@ -204,9 +225,6 @@ export default function ClientsPage() {
                                   Approve
                               </Button>
                           )}
-                      </TableCell>
-                      <TableCell>
-                        {client.is_staff ? <Badge variant="outline" className="border-primary">Staff</Badge> : null}
                       </TableCell>
                     </TableRow>
                   ))

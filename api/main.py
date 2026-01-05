@@ -242,6 +242,10 @@ class ClientResponse(BaseModel):
     bank_sort_code: Optional[str] = None
     is_approved: bool
     is_staff: bool
+    items_bought: int = 0
+    items_sold: int = 0
+    total_spent: float = 0.0
+    total_earned: float = 0.0
 class CommissionCalculation(BaseModel):
     hammer_price: float
     buyers_premium_rate: float = 0.10
@@ -328,10 +332,14 @@ def get_all_clients(db: sqlite3.Connection = Depends(get_db), current_user: dict
     
     cursor = db.cursor()
     cursor.execute('''
-        SELECT id, title, first_name, last_name, name, email, phone, address, 
-               client_type, bank_account_number, bank_sort_code, is_approved, is_staff 
-        FROM clients 
-        ORDER BY last_name, first_name
+        SELECT c.id, c.title, c.first_name, c.last_name, c.name, c.email, c.phone, c.address, 
+               c.client_type, c.bank_account_number, c.bank_sort_code, c.is_approved, c.is_staff,
+               (SELECT COUNT(*) FROM transactions t WHERE t.buyer_id = c.id) as items_bought,
+               (SELECT COUNT(*) FROM transactions t WHERE t.seller_id = c.id) as items_sold,
+               (SELECT COALESCE(SUM(t.total_buyer_pays), 0) FROM transactions t WHERE t.buyer_id = c.id) as total_spent,
+               (SELECT COALESCE(SUM(t.total_seller_receives), 0) FROM transactions t WHERE t.seller_id = c.id) as total_earned
+        FROM clients c
+        ORDER BY c.last_name, c.first_name
     ''')
     return [dict(row) for row in cursor.fetchall()]
 
@@ -486,16 +494,16 @@ def generate_auction_pdf(auction_id: int, db: sqlite3.Connection = Depends(get_d
         raise HTTPException(status_code=500, detail=str(e))
 
 # LOTS
-@app.get("/api/lots/suggest-triage")
-def suggest_triage(estimate_low: str = Query(..., description="Low estimate")):
-    try:
-        cleaned_value = float(str(estimate_low).replace(',', '').replace(' ', ''))
-    except ValueError:
-        return {"suggested_triage": "Physical", "reason": "Invalid estimate value provided."}
+# @app.get("/api/lots/suggest-triage")
+# def suggest_triage(estimate_low: str = Query(..., description="Low estimate")):
+#     try:
+#         cleaned_value = float(str(estimate_low).replace(',', '').replace(' ', ''))
+#     except ValueError:
+#         return {"suggested_triage": "Physical", "reason": "Invalid estimate value provided."}
         
-    suggested = "Online" if cleaned_value < 20000 else "Physical"
-    reason = f"Items under £20,000 typically go to Online stream. This item's lower estimate is £{cleaned_value:,.0f}."
-    return {"suggested_triage": suggested, "reason": reason}
+#     suggested = "Online" if cleaned_value < 20000 else "Physical"
+#     reason = f"Items under £20,000 typically go to Online stream. This item's lower estimate is £{cleaned_value:,.0f}."
+#     return {"suggested_triage": suggested, "reason": reason}
 
 # CREATE LOT
 @app.post("/api/lots", response_model=LotResponse)
@@ -528,6 +536,17 @@ def create_lot(
     lot_dict = dict(cursor.fetchone())
     lot_dict['images'] = []
     return lot_dict
+
+@app.get("/api/lots/suggest-triage")
+def suggest_triage(estimate_low: str = Query(..., description="Low estimate")):
+    try:
+        cleaned_value = float(str(estimate_low).replace(',', '').replace(' ', ''))
+    except ValueError:
+        return {"suggested_triage": "Physical", "reason": "Invalid estimate value provided."}
+        
+    suggested = "Online" if cleaned_value < 20000 else "Physical"
+    reason = f"Items under £20,000 typically go to Online stream. This item's lower estimate is £{cleaned_value:,.0f}."
+    return {"suggested_triage": suggested, "reason": reason}
 
 @app.get("/api/lots", response_model=List[LotResponse])
 def get_lots(
