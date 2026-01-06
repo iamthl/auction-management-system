@@ -25,7 +25,7 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog"
-import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb, Video } from "lucide-react"
+import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb, Video, Gavel } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function LotsPage() {
@@ -40,7 +40,6 @@ export default function LotsPage() {
   const [assignAuctionId, setAssignAuctionId] = useState("")
   const [triageSuggestion, setTriageSuggestion] = useState<any>(null)
   const [commission, setCommission] = useState<any>(null)
-  const [salePrice, setSalePrice] = useState("")
   
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [previewImages, setPreviewImages] = useState<string[]>([])
@@ -84,17 +83,6 @@ export default function LotsPage() {
     return () => clearTimeout(timer)
   }, [formData.estimate_low])
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-        const val = parseFloat(salePrice)
-        if (!isNaN(val) && val > 0) {
-            api.calculateCommission(val).then(setCommission).catch(() => {})
-        }
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [salePrice])
-
   const loadData = () => {
     Promise.all([
         api.getLots({ archived_only: viewMode === "archived" }), 
@@ -109,12 +97,9 @@ export default function LotsPage() {
     const files = e.target.files
     if (files && files.length > 0) {
       const newFiles = Array.from(files)
-      
       setImageFiles(prev => [...prev, ...newFiles])
-      
       const newPreviews = newFiles.map(file => URL.createObjectURL(file))
       setPreviewImages(prev => [...prev, ...newPreviews])
-      
       e.target.value = ""
     }
   }
@@ -282,7 +267,7 @@ export default function LotsPage() {
     try {
         await api.unarchiveLot(id)
         loadData()
-        toast({ title: "Lot restored", description: "Lot moved back to pending list." })
+        toast({ title: "Lot restored" })
     } catch (error) {
         toast({ variant: "destructive", title: "Failed to restore lot" })
     }
@@ -302,17 +287,8 @@ export default function LotsPage() {
     }
   }
 
-  const handleCompleteSale = async (lotId: number) => {
-    if (!salePrice || Number.parseFloat(salePrice) <= 0) return
-    try {
-      await api.completeLotSale(lotId, Number.parseFloat(salePrice))
-      setSalePrice("")
-      setCommission(null)
-      loadData()
-      toast({ title: "Sale completed" })
-    } catch (error) {
-      toast({ variant: "destructive", title: "Failed to complete sale" })
-    }
+  const formatCurrency = (val: number) => {
+      return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(val)
   }
 
   const renderFormContent = (submitLabel: string) => {
@@ -356,8 +332,6 @@ export default function LotsPage() {
             onChange={(e) => setFormData({ ...formData, year: e.target.value })}
           />
         </div>
-        
-        {/* Category & Subcategory */}
         <div className="space-y-2">
           <Label>Category</Label>
           <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
@@ -371,7 +345,6 @@ export default function LotsPage() {
             </SelectContent>
           </Select>
         </div>
-        
         <div className="space-y-2">
             <Label>Subcategory</Label>
             <Input 
@@ -382,7 +355,6 @@ export default function LotsPage() {
             <p className="text-[10px] text-muted-foreground">Type to create or edit subcategory.</p>
         </div>
         
-        {/* Dynamic Fields */}
         {isArt2D && (
             <div className="space-y-2">
                 <Label>Medium</Label>
@@ -393,7 +365,6 @@ export default function LotsPage() {
                 />
             </div>
         )}
-        
         {isPhoto && (
             <div className="space-y-2">
                 <Label>Image Type</Label>
@@ -406,7 +377,6 @@ export default function LotsPage() {
                 </Select>
             </div>
         )}
-
         {is3D && (
             <div className="space-y-2">
                 <Label>Material</Label>
@@ -418,7 +388,6 @@ export default function LotsPage() {
             </div>
         )}
 
-        {/* Dimensions Row */}
         <div className="col-span-2 grid grid-cols-3 gap-4 border p-3 rounded-md bg-muted/20">
             <div className="space-y-2">
                 <Label>Height (cm)</Label>
@@ -513,11 +482,8 @@ export default function LotsPage() {
             />
         </div>
         
-        {/* Image/Video Section */}
         <div className="space-y-2 md:col-span-2">
           <Label>Media (Images & Video)</Label>
-          
-          {/* Upload Input */}
           <div className="flex items-center gap-2 mb-3">
              <Input 
                 type="file" 
@@ -526,8 +492,6 @@ export default function LotsPage() {
                 onChange={handleImageSelect}
              />
           </div>
-          
-          {/* Media + New Previews */}
           {( (editingLot?.images && editingLot.images.length > 0) || previewImages.length > 0 ) && (
             <div className="grid grid-cols-5 gap-2 border p-2 rounded bg-muted/10">
                 {editingLot?.images?.map(img => (
@@ -555,7 +519,6 @@ export default function LotsPage() {
                      <div className="absolute bottom-0 w-full bg-black/60 text-white text-[10px] text-center py-0.5">Existing</div>
                    </div>
                 ))}
-
                 {previewImages.map((src, index) => (
                   <div key={`new-${index}`} className="relative group aspect-square bg-background rounded overflow-hidden border shadow-sm">
                     {imageFiles[index]?.type.startsWith('video/') ? (
@@ -581,7 +544,6 @@ export default function LotsPage() {
               <p className="text-xs text-muted-foreground italic">No media selected.</p>
           )}
         </div>
-
       </div>
       <div className="flex gap-2">
         <Button type="submit">{submitLabel}</Button>
@@ -650,11 +612,13 @@ export default function LotsPage() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-base text-foreground">{lot.artist}</CardTitle>
+                  <CardTitle className="text-base">{lot.artist}</CardTitle>
                   <p className="text-sm text-muted-foreground italic">{lot.title}</p>
                   <p className="text-xs text-muted-foreground mt-1">{lot.lot_reference}</p>
                 </div>
-                <Badge variant={lot.status === "Sold" ? "secondary" : "outline"}>{lot.status}</Badge>
+                <Badge variant={lot.status === "Sold" ? "secondary" : (lot.status === "Unsold" ? "destructive" : "outline")}>
+                    {lot.status}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent className="flex-1">
@@ -677,18 +641,45 @@ export default function LotsPage() {
                     <span className="text-muted-foreground">Stream:</span>
                     <Badge variant="outline">{lot.triage_status}</Badge>
                   </div>
+
+                  {lot.status === 'Sold' && lot.sold_price && (
+                      <div className="mt-3 pt-3 border-t bg-muted/20 -mx-6 px-6 pb-2">
+                          <div className="flex items-center gap-2 mb-2 font-semibold">
+                              <Gavel className="h-4 w-4" />
+                              <span>Sale Results</span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                              <span className="text-muted-foreground">Hammer Price:</span>
+                              <span className="font-medium text-right">{formatCurrency(lot.sold_price)}</span>
+                              
+                              <span className="text-muted-foreground">Buyer/Seller Premium (10%):</span>
+                              <span className="text-right text-muted-foreground">{formatCurrency(lot.sold_price * 0.10)}</span>
+
+                              <span className="font-semibold text-blue-700">Total (Buyer):</span>
+                              <span className=" text-blue-700 text-right">{formatCurrency(lot.sold_price * 1.10)}</span>
+                              
+                              <span className="font-semibold text-green-700">Net (Seller):</span>
+                              <span className="text-green-700 text-right">{formatCurrency(lot.sold_price * 0.90)}</span>
+                              
+                              <div className="col-span-2 border-t my-1"></div>
+                        
+                              <span className="font-bold text-foreground">Commission (20%):</span>
+                              <span className="font-semibold text-right text-foreground">{formatCurrency(lot.sold_price * 0.20)}</span>
+                          </div>
+                      </div>
+                  )}
+
                 </div>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-2 border-t pt-4">
-               
                {viewMode === "active" ? (
                    <>
                     <div className="flex w-full gap-2">
                         <Button variant="outline" size="sm" className="flex-1" onClick={() => startEditing(lot)}>
                             <Pencil className="h-3 w-3 mr-1" /> Edit
                         </Button>
-                        
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button size="sm" className="flex-1">
