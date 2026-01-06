@@ -246,6 +246,19 @@ class ClientResponse(BaseModel):
     items_sold: int = 0
     total_spent: float = 0.0
     total_earned: float = 0.0
+
+class ClientUpdate(BaseModel):
+    title: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    client_type: Optional[str] = None
+    bank_account_number: Optional[str] = None
+    bank_sort_code: Optional[str] = None
+    is_approved: Optional[bool] = None
+
 class CommissionCalculation(BaseModel):
     hammer_price: float
     buyers_premium_rate: float = 0.10
@@ -352,6 +365,78 @@ def approve_client(client_id: int, db: sqlite3.Connection = Depends(get_db), cur
     cursor.execute("UPDATE clients SET is_approved = 1 WHERE id = ?", (client_id,))
     db.commit()
     return {"message": "Client approved"}
+
+@app.put("/api/clients/{client_id}", response_model=ClientResponse)
+def update_client(
+    client_id: int,
+    client_update: ClientUpdate,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can update client records")
+    
+    cursor = db.cursor()
+    cursor.execute("SELECT * FROM clients WHERE id = ?", (client_id,))
+    existing_client = cursor.fetchone()
+    if not existing_client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    update_data = client_update.dict(exclude_unset=True)
+    
+    if any(k in update_data for k in ['title', 'first_name', 'last_name']):
+        current_title = update_data.get('title', existing_client['title'])
+        current_first = update_data.get('first_name', existing_client['first_name'])
+        current_last = update_data.get('last_name', existing_client['last_name'])
+        update_data['name'] = f"{current_title} {current_first} {current_last}".strip()
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data provided to update")
+
+    set_clause = ", ".join([f"{k} = ?" for k in update_data.keys()])
+    values = list(update_data.values()) + [client_id]
+    
+    try:
+        cursor.execute(f"UPDATE clients SET {set_clause} WHERE id = ?", values)
+        db.commit()
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="Email already exists")
+
+    cursor.execute('''
+        SELECT c.id, c.title, c.first_name, c.last_name, c.name, c.email, c.phone, c.address, 
+               c.client_type, c.bank_account_number, c.bank_sort_code, c.is_approved, c.is_staff,
+               (SELECT COUNT(*) FROM transactions t WHERE t.buyer_id = c.id) as items_bought,
+               (SELECT COUNT(*) FROM transactions t WHERE t.seller_id = c.id) as items_sold,
+               (SELECT COALESCE(SUM(t.total_buyer_pays), 0) FROM transactions t WHERE t.buyer_id = c.id) as total_spent,
+               (SELECT COALESCE(SUM(t.total_seller_receives), 0) FROM transactions t WHERE t.seller_id = c.id) as total_earned
+        FROM clients c
+        WHERE c.id = ?
+    ''', (client_id,))
+    
+    return dict(cursor.fetchone())
+
+@app.delete("/api/clients/{client_id}")
+def delete_client(
+    client_id: int,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Only staff can delete client records")
+    
+    cursor = db.cursor()
+    
+    cursor.execute("SELECT id FROM clients WHERE id = ?", (client_id,))
+    if not cursor.fetchone():
+        raise HTTPException(status_code=404, detail="Client not found")
+        
+    if client_id == current_user['id']:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    cursor.execute("DELETE FROM clients WHERE id = ?", (client_id,))
+    db.commit()
+    
+    return {"message": "Client deleted successfully"}
 
 # AUCTIONS
 @app.post("/api/auctions", response_model=AuctionResponse)

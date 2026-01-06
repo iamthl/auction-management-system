@@ -10,9 +10,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Mail, Phone, MapPin, User, CheckCircle, Filter, ShoppingBag, Gavel } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Search, Mail, Phone, MapPin, User, CheckCircle, Filter, ShoppingBag, Gavel, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
+// Extended Client Interface
 interface ExtendedClient extends Client {
     title?: string
     first_name?: string
@@ -35,6 +55,9 @@ export default function ClientsPage() {
   
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+
+  const [editingClient, setEditingClient] = useState<ExtendedClient | null>(null)
+    const [deletingId, setDeletingId] = useState<number | null>(null)
 
   useEffect(() => {
     loadClients()
@@ -87,6 +110,45 @@ export default function ClientsPage() {
       }
   }
 
+  const handleUpdateClient = async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!editingClient) return
+
+      try {
+          const payload = {
+              title: editingClient.title,
+              first_name: editingClient.first_name,
+              last_name: editingClient.last_name,
+              email: editingClient.email,
+              phone: editingClient.phone,
+              address: editingClient.address,
+              client_type: editingClient.client_type,
+              bank_account_number: editingClient.bank_account_number,
+              bank_sort_code: editingClient.bank_sort_code,
+              is_approved: editingClient.is_approved
+          }
+
+          await api.updateClient(editingClient.id, payload)
+          toast({ title: "Client updated successfully" })
+          setEditingClient(null)
+          loadClients()
+      } catch (error) {
+          toast({ title: "Failed to update client", variant: "destructive" })
+      }
+  }
+
+  const handleDeleteClient = async () => {
+      if (!deletingId) return
+      try {
+          await api.deleteClient(deletingId)
+          toast({ title: "Client deleted successfully" })
+          setDeletingId(null)
+          loadClients()
+      } catch (error) {
+          toast({ title: "Failed to delete client", variant: "destructive" })
+      }
+  }
+
   const formatCurrency = (val?: number) => {
       return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(val || 0)
   }
@@ -101,9 +163,18 @@ export default function ClientsPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <CardTitle className="hidden md:block">Client Records</CardTitle>
+            {/* <CardTitle className="hidden md:block">Client Records</CardTitle> */}
             
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search clients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
               <Select value={clientTypeFilter} onValueChange={setClientTypeFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -116,16 +187,6 @@ export default function ClientsPage() {
                   <SelectItem value="Joint">Joint</SelectItem>
                 </SelectContent>
               </Select>
-
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search clients..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
             </div>
           </div>
         </CardHeader>
@@ -139,15 +200,16 @@ export default function ClientsPage() {
                   <TableHead>Full Name</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Contact Details</TableHead>
-                  <TableHead>Activity</TableHead> {/* NEW COLUMN */}
+                  <TableHead>Activity</TableHead>
                   <TableHead>Banking</TableHead>
                   <TableHead>Approved?</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredClients.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No clients found.
                     </TableCell>
                   </TableRow>
@@ -182,7 +244,6 @@ export default function ClientsPage() {
                           )}
                         </div>
                       </TableCell>
-                      
                       <TableCell>
                           <div className="space-y-1 text-sm">
                               {(client.items_bought || 0) > 0 && (
@@ -204,7 +265,6 @@ export default function ClientsPage() {
                               )}
                           </div>
                       </TableCell>
-
                       <TableCell>
                         {client.bank_sort_code ? (
                             <div className="text-xs">
@@ -226,6 +286,28 @@ export default function ClientsPage() {
                               </Button>
                           )}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setEditingClient(client)}>
+                              <Pencil className="mr-2 h-4 w-4 focus:text-foreground" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => setDeletingId(client.id)}
+                                // className="text-red-600 focus:text-foreground"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4 focus:text-foreground" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -234,6 +316,93 @@ export default function ClientsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingClient} onOpenChange={(open) => !open && setEditingClient(null)}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle text-foreground>Edit Client Record</DialogTitle>
+          </DialogHeader>
+          {editingClient && (
+              <form onSubmit={handleUpdateClient} className="space-y-4 text-muted-foreground">
+                  <div className="grid grid-cols-4 gap-4">
+                      <div className="space-y-2 col-span-1">
+                          <Label>Title</Label>
+                          <Input value={editingClient.title || ""} onChange={e => setEditingClient({...editingClient, title: e.target.value})} />
+                      </div>
+                      <div className="space-y-2 col-span-1">
+                          <Label>First Name</Label>
+                          <Input value={editingClient.first_name || ""} onChange={e => setEditingClient({...editingClient, first_name: e.target.value})} />
+                      </div>
+                      <div className="space-y-2 col-span-2">
+                          <Label>Surname</Label>
+                          <Input value={editingClient.last_name || ""} onChange={e => setEditingClient({...editingClient, last_name: e.target.value})} />
+                      </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                          <Label>Email</Label>
+                          <Input value={editingClient.email} onChange={e => setEditingClient({...editingClient, email: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                          <Label>Phone</Label>
+                          <Input value={editingClient.phone || ""} onChange={e => setEditingClient({...editingClient, phone: e.target.value})} />
+                      </div>
+                  </div>
+
+                  <div className="space-y-2">
+                      <Label>Address</Label>
+                      <Input value={editingClient.address || ""} onChange={e => setEditingClient({...editingClient, address: e.target.value})} />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                          <Label>Type</Label>
+                          <Select value={editingClient.client_type} onValueChange={v => setEditingClient({...editingClient, client_type: v})}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="Buyer">Buyer</SelectItem>
+                                  <SelectItem value="Seller">Seller</SelectItem>
+                                  <SelectItem value="Joint">Joint</SelectItem>
+                              </SelectContent>
+                          </Select>
+                      </div>
+                      <div className="space-y-2">
+                          <Label>Sort Code</Label>
+                          <Input value={editingClient.bank_sort_code || ""} onChange={e => setEditingClient({...editingClient, bank_sort_code: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                          <Label>Account No</Label>
+                          <Input value={editingClient.bank_account_number || ""} onChange={e => setEditingClient({...editingClient, bank_account_number: e.target.value})} />
+                      </div>
+                  </div>
+
+                  <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setEditingClient(null)}>Cancel</Button>
+                      <Button type="submit">Save Changes</Button>
+                  </DialogFooter>
+              </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Alert */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the client record and remove their data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteClient} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   )
 }

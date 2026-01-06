@@ -354,4 +354,22 @@ export const api = {
     if (!res.ok) throw new Error("Failed to fetch clients")
     return res.json()
   },
+
+  async updateClient(id: number, data: Partial<Client>): Promise<Client> {
+    const res = await fetch(`${API_BASE_URL}/api/clients/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) throw new Error("Failed to update client")
+    return res.json()
+  },
+
+  async deleteClient(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/api/clients/${id}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) throw new Error("Failed to delete client")
+  },
 }
