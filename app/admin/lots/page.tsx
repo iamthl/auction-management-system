@@ -545,11 +545,11 @@ export default function LotsPage() {
           )}
         </div>
       </div>
-      <div className="flex gap-2">
-        <Button type="submit">{submitLabel}</Button>
+      <div className="flex gap-2 justify-end">
         <Button type="button" variant="outline" onClick={() => editingLot ? setEditingLot(null) : setShowForm(false)}>
           Cancel
         </Button>
+        <Button type="submit">{submitLabel}</Button>
       </div>
     </div>
     )
@@ -578,7 +578,7 @@ export default function LotsPage() {
       </Tabs>
 
       {showForm && (
-        <Card>
+        <Card className="border-l-4 border-l-primary">
           <CardHeader className="text-foreground"><CardTitle>Create New Lot</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={handleCreateSubmit}>
@@ -612,7 +612,7 @@ export default function LotsPage() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-base">{lot.artist}</CardTitle>
+                  <CardTitle className="text-base text-foreground">{lot.artist}</CardTitle>
                   <p className="text-sm text-muted-foreground italic">{lot.title}</p>
                   <p className="text-xs text-muted-foreground mt-1">{lot.lot_reference}</p>
                 </div>

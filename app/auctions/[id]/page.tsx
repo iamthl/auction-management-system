@@ -110,15 +110,15 @@ export default function AuctionDetailPage() {
             </h1>
             
             {auction.theme && (
-              <p className="text-xl text-muted-foreground">{auction.theme}</p>
+                    <p className="text-xl italic border-l-2 pl-3 py-1 bg-muted/30">
+                    "{auction.theme}"
+                    </p>
             )}
 
             <div className="flex flex-wrap gap-6 text-sm text-muted-foreground pt-2">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                {new Date(auction.auction_date).toLocaleDateString("en-GB", {
-                  weekday: "long", year: "numeric", month: "long", day: "numeric"
-                })}
+                {new Date(auction.auction_date).toLocaleDateString()}
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />

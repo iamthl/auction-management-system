@@ -68,18 +68,13 @@ export default function AuctionsPage() {
                       <Badge>{auction.auction_type}</Badge>
                       <Badge variant="outline">Upcoming</Badge>
                     </div>
-                    <CardTitle className="text-xl font-serif">{auction.title}</CardTitle>
+                    <CardTitle className="text-xl text-foreground">{auction.title}</CardTitle>
                     {auction.theme && <p className="text-sm text-muted-foreground mt-2">{auction.theme}</p>}
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar className="h-4 w-4" />
-                      {new Date(auction.date).toLocaleDateString("en-GB", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
+                      {new Date(auction.auction_date).toLocaleDateString()}
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Clock className="h-4 w-4" />

@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Calendar, MapPin, Clock, Printer, ArrowLeft, Loader2 } from "lucide-react"
+
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -138,7 +140,7 @@ export default function AuctionsPage() {
   }
 
   const AuctionForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void, submitLabel: string }) => (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4 text-muted-foreground">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="title">Auction Title</Label>
@@ -198,11 +200,11 @@ export default function AuctionsPage() {
           />
         </div>
       </div>
-      <div className="flex gap-2">
-        <Button type="submit">{submitLabel}</Button>
+      <div className="flex gap-2 justify-end">
         <Button type="button" variant="outline" onClick={() => editingAuction ? setEditingAuction(null) : setShowForm(false)}>
           Cancel
         </Button>
+        <Button type="submit">{submitLabel}</Button>
       </div>
     </form>
   )
@@ -233,9 +235,9 @@ export default function AuctionsPage() {
       </Tabs>
 
       {showForm && (
-        <Card>
+        <Card className="border-l-4 border-l-primary">
           <CardHeader>
-            <CardTitle>Create New Auction</CardTitle>
+            <CardTitle className="text-foreground">Create New Auction</CardTitle>
             <CardDescription>Set up a new auction event</CardDescription>
           </CardHeader>
           <CardContent>
@@ -264,7 +266,7 @@ export default function AuctionsPage() {
         {auctions.map((auction) => (
           <Card key={auction.id} className="flex flex-col">
             <CardHeader>
-              <CardTitle className="text-lg flex justify-between items-start">
+              <CardTitle className="text-lg flex justify-between items-start text-foreground">
                   <span>{auction.title}</span>
               </CardTitle>
               <CardDescription>{auction.theme}</CardDescription>

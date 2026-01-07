@@ -230,7 +230,8 @@ export default function AdminDashboard() {
                                             <Clock className="h-3 w-3" />
                                             {auction.start_time}
                                         </div>
-                                        <div className="text-[9px] text-muted-foreground/70 truncate mt-0.5">
+                                        <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
+                                            <MapPin className="h-3 w-3" />
                                             {auction.location}
                                         </div>
                                     </div>
