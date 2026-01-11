@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert" 
 import { Switch } from "@/components/ui/switch"
+import { Slider } from "@/components/ui/slider"
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -25,18 +26,24 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog"
-import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb, Video, Gavel } from "lucide-react"
+import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb, Video, Gavel, Search, Filter } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function LotsPage() {
   const [lots, setLots] = useState<Lot[]>([])
+  const [filteredLots, setFilteredLots] = useState<Lot[]>([]) // NEW: Filtered State
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [viewMode, setViewMode] = useState<"active" | "archived">("active")
   const [showForm, setShowForm] = useState(false)
   const [selectedLot, setSelectedLot] = useState<Lot | null>(null)
   
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all") // all, Pending, Listed, Sold, Unsold
+  const [typeFilter, setTypeFilter] = useState("all") // all, Physical, Online
+  const [priceRange, setPriceRange] = useState([0, 1000000]) // Default Max 1M
+  const [maxPrice, setMaxPrice] = useState(1000000)
+
   const [editingLot, setEditingLot] = useState<Lot | null>(null)
-  
   const [assignAuctionId, setAssignAuctionId] = useState("")
   const [triageSuggestion, setTriageSuggestion] = useState<any>(null)
   const [commission, setCommission] = useState<any>(null)
@@ -83,16 +90,66 @@ export default function LotsPage() {
     return () => clearTimeout(timer)
   }, [formData.estimate_low])
 
+  useEffect(() => {
+    let result = lots
+
+    // 1. Search Query (Title, Artist, Ref)
+    if (searchQuery) {
+      const lowerQ = searchQuery.toLowerCase()
+      result = result.filter(l => 
+        l.title.toLowerCase().includes(lowerQ) || 
+        l.artist.toLowerCase().includes(lowerQ) ||
+        l.lot_reference.toLowerCase().includes(lowerQ)
+      )
+    }
+
+    // 2. Status Filter
+    if (statusFilter !== "all") {
+      result = result.filter(l => l.status === statusFilter)
+    }
+
+    // 3. Type Filter (Triage Status)
+    if (typeFilter !== "all") {
+      result = result.filter(l => l.triage_status === typeFilter)
+    }
+
+    // 4. Price Range (Estimate Low)
+    result = result.filter(l => l.estimate_low >= priceRange[0] && l.estimate_low <= priceRange[1])
+
+    setFilteredLots(result)
+  }, [lots, searchQuery, statusFilter, typeFilter, priceRange])
+
+  // NEW: Clear Filters
+  const clearFilters = () => {
+      setSearchQuery("")
+      setStatusFilter("all")
+      setTypeFilter("all")
+      setPriceRange([0, maxPrice])
+  }
+
   const loadData = () => {
     Promise.all([
         api.getLots({ archived_only: viewMode === "archived" }), 
         api.getAuctions()
     ]).then(([lotsData, auctionsData]) => {
       setLots(lotsData)
+      setFilteredLots(lotsData)
+      
+      // Calculate dynamic max price for slider
+      if (lotsData.length > 0) {
+          const highest = Math.max(...lotsData.map(l => l.estimate_low))
+          const ceiling = Math.ceil(highest / 10000) * 10000 // Round up to nearest 10k
+          setMaxPrice(ceiling)
+          setPriceRange([0, ceiling])
+      }
+      
       setAuctions(auctionsData)
     })
   }
 
+
+
+  // ... (Keep existing image handlers & submit logic) ...
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
@@ -287,11 +344,13 @@ export default function LotsPage() {
     }
   }
 
+  // --- Helper to calculate and display sale details ---
   const formatCurrency = (val: number) => {
       return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(val)
   }
 
   const renderFormContent = (submitLabel: string) => {
+    // ... (Keep existing form content rendering logic) ...
     const isArt2D = ["Drawing", "Painting"].includes(formData.category)
     const isPhoto = formData.category === "Photography"
     const is3D = ["Sculpture", "Carving"].includes(formData.category)
@@ -601,13 +660,82 @@ export default function LotsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* --- NEW: FILTER BAR --- */}
+      <div className=" space-y-4 md:space-y-0 md:flex md:items-start gap-6 ">
+        
+        {/* Search */}
+        <div className="flex-1 space-y-2">
+            <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Title, Artist, Ref..." 
+                    className="pl-9"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </div>
+        </div>
+
+        {/* Status Filter */}
+        <div className="w-full md:w-[150px] space-y-2 text-muted-foreground">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                    <Filter className="h-3 w-3 mr-2" />
+                    <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Listed">Listed</SelectItem>
+                    <SelectItem value="Sold">Sold</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+
+        {/* Type Filter */}
+        <div className="w-full md:w-[150px] space-y-2 text-muted-foreground">
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger>
+                    <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="Physical">Physical</SelectItem>
+                    <SelectItem value="Online">Online</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+
+        {/* Price Range Slider */}
+        <div className="w-full md:w-[250px] space-y-3 pt-1">
+             <Slider 
+                value={priceRange} 
+                max={maxPrice} 
+                step={1000} 
+                onValueChange={setPriceRange} 
+                className="py-2"
+             />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                 <span>Price Range</span>
+                 <span>{formatCurrency(priceRange[0])} - {formatCurrency(priceRange[1])}</span>
+             </div>
+        </div>
+
+        {/* Clear Filters */}
+        <div className="space-y-2 text-muted-foreground">
+            <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear Filters">
+                <X className="h-4 w-4" />
+            </Button>
+        </div>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {lots.length === 0 && (
+        {filteredLots.length === 0 && (
             <div className="col-span-full text-center py-10 text-muted-foreground">
-                No {viewMode} lots found.
+                No lots match your filters.
             </div>
         )}
-        {lots.map((lot) => (
+        {filteredLots.map((lot) => (
           <Card key={lot.id} className="flex flex-col">
             <CardHeader>
               <div className="flex items-start justify-between">
