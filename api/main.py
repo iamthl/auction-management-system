@@ -175,6 +175,7 @@ class LotCreate(BaseModel):
 
 class LotUpdate(BaseModel):
     lot_reference: Optional[str] = None
+    auction_id: Optional[int] = None
     artist: Optional[str] = None
     title: Optional[str] = None
     year_of_production: Optional[int] = None
@@ -197,6 +198,7 @@ class LotUpdate(BaseModel):
 
 class LotResponse(LotCreate):
     id: int
+    auction_id: Optional[int] = None
     sold_price: Optional[float] = None
     withdrawal_fee: float = 0
     created_at: str
