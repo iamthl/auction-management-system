@@ -37,6 +37,8 @@ export interface Lot {
   title: string
   category: string
   dimensions?: string
+  subcategory?: string
+  subject?: string
   framing_details?: string
   year_of_production?: number
   description?: string
@@ -310,6 +312,10 @@ export const api = {
     category?: string
     subcategory?: string
     auction_date?: string
+    auction_id?: string 
+    subject?: string
+    min_estimate?: number
+    max_estimate?: number
   }): Promise<Lot[]> {
     const query = new URLSearchParams(params as any).toString()
     const res = await fetch(`${API_BASE_URL}/api/catalogue/search?${query}`)

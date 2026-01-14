@@ -66,6 +66,14 @@ def startup_event():
         cursor.execute("ALTER TABLE lots ADD COLUMN is_archived INTEGER DEFAULT 0")
     except sqlite3.OperationalError: pass 
 
+    try:
+        cursor.execute("ALTER TABLE lots ADD COLUMN subject TEXT")
+        print("Migrated lots table: Added subject column.")
+    except sqlite3.OperationalError:
+        pass
+        
+    conn.commit()
+
     new_columns = [
         ("medium", "TEXT"),
         ("material", "TEXT"),
@@ -157,6 +165,7 @@ class LotCreate(BaseModel):
     year_of_production: Optional[int] = None
     category: str
     subcategory: Optional[str] = None 
+    subject: Optional[str] = None
     dimensions: Optional[str] = None
     framing_details: Optional[str] = None
     description: Optional[str] = None
@@ -181,6 +190,7 @@ class LotUpdate(BaseModel):
     year_of_production: Optional[int] = None
     category: Optional[str] = None
     subcategory: Optional[str] = None 
+    subject: Optional[str] = None
     dimensions: Optional[str] = None
     framing_details: Optional[str] = None
     description: Optional[str] = None
@@ -604,14 +614,14 @@ def create_lot(
     cursor = db.cursor()
     cursor.execute('''
         INSERT INTO lots (
-            lot_reference, artist, title, year_of_production, category, subcategory, description,
+            lot_reference, artist, title, year_of_production, category, subcategory, subject, description,
             dimensions, framing_details, estimate_low, estimate_high, reserve_price, 
             triage_status, seller_id, status,
             medium, material, weight, height, width, depth, is_framed
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending", ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending", ?, ?, ?, ?, ?, ?, ?)
     ''', (
-        lot.lot_reference, lot.artist, lot.title, lot.year_of_production, lot.category, lot.subcategory,
+        lot.lot_reference, lot.artist, lot.title, lot.year_of_production, lot.category, lot.subcategory, lot.subject,
         lot.description, lot.dimensions, lot.framing_details, lot.estimate_low, 
         lot.estimate_high, lot.reserve_price, lot.triage_status, seller_id,
         lot.medium, lot.material, lot.weight, lot.height, lot.width, lot.depth, lot.is_framed
@@ -922,6 +932,10 @@ def search_catalogue(
     auction_type: Optional[str] = None,
     category: Optional[str] = None,
     subcategory: Optional[str] = None,
+    auction_id: Optional[int] = None,
+    subject: Optional[str] = None,
+    min_estimate: Optional[float] = None,
+    max_estimate: Optional[float] = None,
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()
@@ -950,6 +964,18 @@ def search_catalogue(
     if subcategory: 
         query += ' AND l.subcategory = ?'
         params.append(subcategory)
+    if auction_id:
+        query += ' AND l.auction_id = ?'
+        params.append(auction_id)
+    if subject:
+        query += ' AND l.subject = ?'
+        params.append(subject)
+    if min_estimate is not None:
+        query += ' AND l.estimate_low >= ?'
+        params.append(min_estimate)
+    if max_estimate is not None:
+        query += ' AND l.estimate_low <= ?'
+        params.append(max_estimate)
     
     query += ' ORDER BY a.auction_date ASC'
     cursor.execute(query, params)
