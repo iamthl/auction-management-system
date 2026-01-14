@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, MapPin, Clock, TrendingUp } from "lucide-react"
+import { Calendar, MapPin, Clock, TrendingUp, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
 export default function AuctionsPage() {
@@ -65,8 +65,8 @@ export default function AuctionsPage() {
                 <Card key={auction.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-start justify-between mb-2">
-                      <Badge>{auction.auction_type}</Badge>
-                      <Badge variant="outline">Upcoming</Badge>
+                      <Badge variant="outline">{auction.auction_type}</Badge>
+                      <Badge>Upcoming</Badge>
                     </div>
                     <CardTitle className="text-xl text-foreground">{auction.title}</CardTitle>
                     {auction.theme && <p className="text-sm text-muted-foreground mt-2">{auction.theme}</p>}
@@ -99,19 +99,18 @@ export default function AuctionsPage() {
             <div className="space-y-8">
               {completedAuctions.map((auction) => {
                 const stats = calculateAuctionStats(auction.id)
-                const lots = auctionResults[auction.id] || []
 
                 return (
                   <Card key={auction.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div>
-                          <CardTitle className="text-2xl font-serif">{auction.title}</CardTitle>
+                          <CardTitle className="text-xl text-foreground">{auction.title}</CardTitle>
                           <p className="text-sm text-muted-foreground mt-2">{auction.theme}</p>
                           <div className="flex items-center gap-4 mt-3 text-sm">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-4 w-4" />
-                              {new Date(auction.date).toLocaleDateString()}
+                              {new Date(auction.auction_date).toLocaleDateString()} 
                             </span>
                             <span className="flex items-center gap-1">
                               <MapPin className="h-4 w-4" />
@@ -120,59 +119,39 @@ export default function AuctionsPage() {
                             <Badge variant="outline">{auction.auction_type}</Badge>
                           </div>
                         </div>
-                        <Badge variant="secondary">Concluded</Badge>
+                        <Badge variant="secondary">Completed</Badge>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-muted rounded-lg">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-muted/40 rounded-lg">
                         <div>
                           <p className="text-sm text-muted-foreground">Total Lots</p>
-                          <p className="text-2xl font-semibold">{stats.totalLots}</p>
+                          <p className="text-2xl font-semibold text-foreground">{stats.totalLots}</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Sold</p>
-                          <p className="text-2xl font-semibold text-green-600">{stats.soldLots}</p>
+                          <p className="text-2xl font-semibold text-foreground">{stats.soldLots}</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Sell-Through Rate</p>
-                          <p className="text-2xl font-semibold flex items-center gap-1">
+                          <p className="text-2xl font-semibold flex items-center gap-1 text-foreground">
                             <TrendingUp className="h-5 w-5" />
                             {stats.sellThrough.toFixed(0)}%
                           </p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Total Hammer</p>
-                          <p className="text-2xl font-semibold">£{stats.totalHammer.toLocaleString()}</p>
+                          <p className="text-2xl font-semibold text-foreground">£{stats.totalHammer.toLocaleString()}</p>
                         </div>
                       </div>
 
-                      {lots.filter((l) => l.status === "Sold").length > 0 && (
-                        <div>
-                          <h3 className="text-lg font-semibold mb-4">Notable Sales</h3>
-                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {lots
-                              .filter((l) => l.status === "Sold")
-                              .sort((a, b) => (b.sold_price || 0) - (a.sold_price || 0))
-                              .slice(0, 6)
-                              .map((lot) => (
-                                <div key={lot.id} className="p-4 border rounded-lg">
-                                  <p className="font-semibold text-sm">{lot.artist}</p>
-                                  <p className="text-sm text-muted-foreground italic">{lot.title}</p>
-                                  <p className="text-xs text-muted-foreground mt-1">{lot.lot_number}</p>
-                                  <div className="mt-2 pt-2 border-t">
-                                    <p className="text-xs text-muted-foreground">Hammer Price</p>
-                                    <p className="text-lg font-semibold text-green-600">
-                                      £{lot.sold_price?.toLocaleString()}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      Est. £{lot.estimate_low.toLocaleString()} - £{lot.estimate_high.toLocaleString()}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      )}
+                      <div className="flex justify-end">
+                        <Link href={`/auctions/${auction.id}`}>
+                            <Button className="w-full sm:w-auto bg-transparant" variant="outline">
+                                View Results 
+                            </Button>
+                        </Link>
+                      </div>
                     </CardContent>
                   </Card>
                 )

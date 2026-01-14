@@ -40,7 +40,6 @@ def create_mock_data():
         return
     
     # CLIENTS
-    
     admin_pass = get_password_hash("admin123")
     seller_pass = get_password_hash("seller123")
     buyer_pass = get_password_hash("buyer123")
@@ -80,8 +79,9 @@ def create_mock_data():
         ("Post-War European Masters", "Paris", (datetime.now() + timedelta(days=45)).strftime("%Y-%m-%d"), "7:00pm", "Physical", "Major works from post-war European artists"),
         ("Modern American Art", "New York", (datetime.now() + timedelta(days=60)).strftime("%Y-%m-%d"), "2:00pm", "Physical", "Significant American artworks from 1950-2000"),
         ("Online Fine Art Sale", "London", (datetime.now() + timedelta(days=15)).strftime("%Y-%m-%d"), "9:30am", "Online", "Accessible fine art for emerging collectors"),
-        ("Impressionist & Modern Art", "London", (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d"), "7:00pm", "Physical", "Evening sale of impressionist masterpieces (PAST)"),
-        ("Contemporary Sculpture", "Paris", (datetime.now() - timedelta(days=45)).strftime("%Y-%m-%d"), "2:00pm", "Physical", "Three-dimensional artworks by leading sculptors (PAST)"),
+        # PAST AUCTIONS
+        ("Impressionist & Modern Art", "London", (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d"), "7:00pm", "Physical", "Evening sale of impressionist masterpieces"),
+        ("Contemporary Sculpture", "Paris", (datetime.now() - timedelta(days=45)).strftime("%Y-%m-%d"), "2:00pm", "Physical", "Three-dimensional artworks by leading sculptors"),
     ]
     
     auction_ids = []
@@ -91,153 +91,61 @@ def create_mock_data():
             VALUES (?, ?, ?, ?, ?, ?)
         """, auction)
         auction_ids.append(cursor.lastrowid)
+        
+    past_auction_ids = [auction_ids[4], auction_ids[5]] # Capture IDs for logic later
     
     # LOTS DATA
-    # PAINTINGS
     paintings = [
-        {
-            "title": "Coastal Morning Light", "artist": "David Hockney", "year": 2018, "category": "Painting",
-            "subject": "Seascape", "medium": "Oil", "framed": True, "height": 120, "width": 150,
-            "description": "A stunning depiction of early morning light reflecting off calm coastal waters.",
-            "estimate_low": 45000, "estimate_high": 65000, "reserve": 42000, 
-            "seller_idx": 0
-        },
-        {
-            "title": "Urban Fragments", "artist": "Banksy", "year": 2020, "category": "Painting",
-            "subject": "Abstract", "medium": "Acrylic", "framed": True, "height": 100, "width": 100,
-            "description": "A provocative commentary on modern urban life, featuring Banksy's signature stencil technique.",
-            "estimate_low": 85000, "estimate_high": 120000, "reserve": 80000, "seller_idx": 2
-        },
-        {
-            "title": "Summer Garden", "artist": "Joan Miró", "year": 1965, "category": "Painting",
-            "subject": "Landscape", "medium": "Oil", "framed": True, "height": 80, "width": 100,
-            "description": "Vibrant garden scene with Miró's characteristic biomorphic forms and brilliant primary colors.",
-            "estimate_low": 150000, "estimate_high": 200000, "reserve": 145000, "seller_idx": 4
-        },
-        {
-            "title": "Portrait of a Lady", "artist": "Lucian Freud", "year": 1995, "category": "Painting",
-            "subject": "Portrait", "medium": "Watercolour", "framed": True, "height": 60, "width": 50,
-            "description": "Intimate portrait demonstrating Freud's psychological intensity.",
-            "estimate_low": 12000, "estimate_high": 18000, "reserve": 11000, "seller_idx": 9
-        },
+        { "title": "Coastal Morning Light", "artist": "David Hockney", "year": 2018, "category": "Painting", "subject": "Seascape", "medium": "Oil", "framed": True, "height": 120, "width": 150, "description": "A stunning depiction of early morning light reflecting off calm coastal waters.", "estimate_low": 45000, "estimate_high": 65000, "reserve": 42000, "seller_idx": 0 },
+        { "title": "Urban Fragments", "artist": "Banksy", "year": 2020, "category": "Painting", "subject": "Abstract", "medium": "Acrylic", "framed": True, "height": 100, "width": 100, "description": "A provocative commentary on modern urban life.", "estimate_low": 85000, "estimate_high": 120000, "reserve": 80000, "seller_idx": 2 },
+        { "title": "Summer Garden", "artist": "Joan Miró", "year": 1965, "category": "Painting", "subject": "Landscape", "medium": "Oil", "framed": True, "height": 80, "width": 100, "description": "Vibrant garden scene.", "estimate_low": 150000, "estimate_high": 200000, "reserve": 145000, "seller_idx": 4 },
+        { "title": "Portrait of a Lady", "artist": "Lucian Freud", "year": 1995, "category": "Painting", "subject": "Portrait", "medium": "Watercolour", "framed": True, "height": 60, "width": 50, "description": "Intimate portrait.", "estimate_low": 12000, "estimate_high": 18000, "reserve": 11000, "seller_idx": 9 },
     ]
-    
-    # DRAWINGS
     drawings = [
-        {
-            "title": "Study of Hands", "artist": "Lucian Freud", "year": 1988, "category": "Drawing",
-            "subject": "Figure", "medium": "Charcoal", "framed": True, "height": 42, "width": 30,
-            "description": "Detailed anatomical study showcasing Freud's exceptional draftsmanship.",
-            "estimate_low": 8500, "estimate_high": 12000, "reserve": 8000, "seller_idx": 0 # ADMIN
-        },
-        {
-            "title": "Architectural Sketch", "artist": "David Hockney", "year": 2015, "category": "Drawing",
-            "subject": "Landscape", "medium": "Pencil", "framed": False, "height": 29, "width": 42,
-            "description": "Quick observational sketch of California architecture.",
-            "estimate_low": 15000, "estimate_high": 22000, "reserve": 14000, "seller_idx": 6
-        },
-        {
-            "title": "Abstract Composition", "artist": "Wassily Kandinsky", "year": 1923, "category": "Drawing",
-            "subject": "Abstract", "medium": "Ink", "framed": True, "height": 35, "width": 50,
-            "description": "Pioneering abstract work exploring the relationship between form and color.",
-            "estimate_low": 18000, "estimate_high": 25000, "reserve": 17000, "seller_idx": 6
-        },
+        { "title": "Study of Hands", "artist": "Lucian Freud", "year": 1988, "category": "Drawing", "subject": "Figure", "medium": "Charcoal", "framed": True, "height": 42, "width": 30, "description": "Detailed anatomical study.", "estimate_low": 8500, "estimate_high": 12000, "reserve": 8000, "seller_idx": 0 },
+        { "title": "Architectural Sketch", "artist": "David Hockney", "year": 2015, "category": "Drawing", "subject": "Landscape", "medium": "Pencil", "framed": False, "height": 29, "width": 42, "description": "Quick observational sketch.", "estimate_low": 15000, "estimate_high": 22000, "reserve": 14000, "seller_idx": 6 },
+        { "title": "Abstract Composition", "artist": "Wassily Kandinsky", "year": 1923, "category": "Drawing", "subject": "Abstract", "medium": "Ink", "framed": True, "height": 35, "width": 50, "description": "Pioneering abstract work.", "estimate_low": 18000, "estimate_high": 25000, "reserve": 17000, "seller_idx": 6 },
     ]
-    
-    # SCULPTURES
     sculptures = [
-        {
-            "title": "Abstract Form No. 7", "artist": "Henry Moore", "year": 1972, "category": "Sculpture",
-            "subject": "Abstract", "material": "Bronze", "height": 85, "length": 60, "width": 40, "weight": 125,
-            "description": "Monumental bronze sculpture exploring Moore's fascination with organic forms.",
-            "estimate_low": 220000, "estimate_high": 280000, "reserve": 210000, "seller_idx": 9
-        },
-        {
-            "title": "Reclining Figure", "artist": "Barbara Hepworth", "year": 1968, "category": "Sculpture",
-            "subject": "Figure", "material": "Marble", "height": 45, "length": 90, "width": 35, "weight": 180,
-            "description": "Elegant marble sculpture demonstrating Hepworth's mastery of form.",
-            "estimate_low": 180000, "estimate_high": 240000, "reserve": 175000, "seller_idx": 2
-        },
-        {
-            "title": "Dancing Figure", "artist": "Auguste Rodin", "year": 1905, "category": "Sculpture",
-            "subject": "Figure", "material": "Bronze", "height": 35, "length": 20, "width": 18, "weight": 8,
-            "description": "Small bronze study capturing movement and emotion.",
-            "estimate_low": 65000, "estimate_high": 85000, "reserve": 62000, "seller_idx": 1
-        },
-        {
-            "title": "Modern Torso", "artist": "Antony Gormley", "year": 2010, "category": "Sculpture",
-            "subject": "Figure", "material": "Pewter", "height": 55, "length": 30, "width": 25, "weight": 15,
-            "description": "Contemporary interpretation of the human form.",
-            "estimate_low": 16000, "estimate_high": 22000, "reserve": 15000, "seller_idx": 4
-        },
+        { "title": "Abstract Form No. 7", "artist": "Henry Moore", "year": 1972, "category": "Sculpture", "subject": "Abstract", "material": "Bronze", "height": 85, "length": 60, "width": 40, "weight": 125, "description": "Monumental bronze sculpture.", "estimate_low": 220000, "estimate_high": 280000, "reserve": 210000, "seller_idx": 9 },
+        { "title": "Reclining Figure", "artist": "Barbara Hepworth", "year": 1968, "category": "Sculpture", "subject": "Figure", "material": "Marble", "height": 45, "length": 90, "width": 35, "weight": 180, "description": "Elegant marble sculpture.", "estimate_low": 180000, "estimate_high": 240000, "reserve": 175000, "seller_idx": 2 },
+        { "title": "Dancing Figure", "artist": "Auguste Rodin", "year": 1905, "category": "Sculpture", "subject": "Figure", "material": "Bronze", "height": 35, "length": 20, "width": 18, "weight": 8, "description": "Small bronze study.", "estimate_low": 65000, "estimate_high": 85000, "reserve": 62000, "seller_idx": 1 },
+        { "title": "Modern Torso", "artist": "Antony Gormley", "year": 2010, "category": "Sculpture", "subject": "Figure", "material": "Pewter", "height": 55, "length": 30, "width": 25, "weight": 15, "description": "Contemporary interpretation.", "estimate_low": 16000, "estimate_high": 22000, "reserve": 15000, "seller_idx": 4 },
     ]
-    
-    # PHOTOGRAPHS
     photographs = [
-        {
-            "title": "Urban Landscape #12", "artist": "Andreas Gursky", "year": 2019, "category": "Photography",
-            "subject": "Landscape", "image_type": "Colour", "height": 120, "width": 180,
-            "description": "Large-scale photograph of urban architecture, printed on archival paper.",
-            "estimate_low": 35000, "estimate_high": 45000, "reserve": 33000, "seller_idx": 8
-        },
-        {
-            "title": "Portrait Series III", "artist": "Annie Leibovitz", "year": 2017, "category": "Photography",
-            "subject": "Portrait", "image_type": "Black and White", "height": 76, "width": 60,
-            "description": "Striking black and white portrait from Leibovitz's celebrated series.",
-            "estimate_low": 18000, "estimate_high": 25000, "reserve": 17000, "seller_idx": 7
-        },
+        { "title": "Urban Landscape #12", "artist": "Andreas Gursky", "year": 2019, "category": "Photography", "subject": "Landscape", "image_type": "Colour", "height": 120, "width": 180, "description": "Large-scale photograph.", "estimate_low": 35000, "estimate_high": 45000, "reserve": 33000, "seller_idx": 8 },
+        { "title": "Portrait Series III", "artist": "Annie Leibovitz", "year": 2017, "category": "Photography", "subject": "Portrait", "image_type": "Black and White", "height": 76, "width": 60, "description": "Striking black and white portrait.", "estimate_low": 18000, "estimate_high": 25000, "reserve": 17000, "seller_idx": 7 },
     ]
-    
-    # CARVINGS
     carvings = [
-        {
-            "title": "Forest Spirit", "artist": "Grinling Gibbons", "year": 1680, "category": "Carving",
-            "subject": "Figure", "material": "Oak", "height": 65, "length": 45, "width": 30, "weight": 15,
-            "description": "Exceptional 17th-century carved oak panel depicting a woodland scene.",
-            "estimate_low": 28000, "estimate_high": 38000, "reserve": 26000, "seller_idx": 6
-        },
-        {
-            "title": "Celtic Cross", "artist": "Unknown", "year": 1850, "category": "Carving",
-            "subject": "Religious", "material": "Beech", "height": 45, "length": 30, "width": 15, "weight": 8,
-            "description": "Victorian revival carved beech cross with traditional Celtic knotwork patterns.",
-            "estimate_low": 5500, "estimate_high": 8000, "reserve": 5000, "seller_idx": 9
-        },
+        { "title": "Forest Spirit", "artist": "Grinling Gibbons", "year": 1680, "category": "Carving", "subject": "Figure", "material": "Oak", "height": 65, "length": 45, "width": 30, "weight": 15, "description": "Exceptional 17th-century carved oak panel.", "estimate_low": 28000, "estimate_high": 38000, "reserve": 26000, "seller_idx": 6 },
+        { "title": "Celtic Cross", "artist": "Unknown", "year": 1850, "category": "Carving", "subject": "Religious", "material": "Beech", "height": 45, "length": 30, "width": 15, "weight": 8, "description": "Victorian revival carved beech cross.", "estimate_low": 5500, "estimate_high": 8000, "reserve": 5000, "seller_idx": 9 },
     ]
     
-    # Combine all lots
     all_lots = paintings + drawings + sculptures + photographs + carvings
-    # Total lots: 4 + 3 + 4 + 2 + 2 = 15 lots
     
     for idx, lot in enumerate(all_lots):
         lot_reference = f"LOT-{2024}-{idx + 100:03d}"
         
-        # Determine auction and triage based on estimates
-        suggested_stream = "Online" if lot["estimate_low"] < 20000 else "Physical"
         
         if lot["category"] in ["Sculpture", "Carving"]:
-            auction_id = auction_ids[3] if lot["estimate_low"] < 20000 else auction_ids[0]
-        elif lot["category"] == "Photography":
-            auction_id = auction_ids[3]
+            auction_id = auction_ids[5]
+        
+        elif lot["artist"] in ["Joan Miró", "David Hockney", "Wassily Kandinsky"]:
+            auction_id = auction_ids[4]
+            
         else:
-            if lot["estimate_low"] < 20000:
+            if lot["category"] == "Photography":
+                auction_id = auction_ids[0] 
+            elif lot["estimate_low"] < 20000:
                 auction_id = auction_ids[3]
-            elif lot["artist"] in ["Pablo Picasso", "Henri Matisse", "Joan Miró"]:
-                auction_id = auction_ids[1]
             else:
-                auction_id = auction_ids[0]
+                auction_id = auction_ids[1] 
         
-        # Determine status based on auction date
-        # cursor.execute("SELECT auction_date FROM auctions WHERE id = ?", (auction_id,))
-        # auction_date_str = cursor.fetchone()[0]
-        # auction_dt = datetime.strptime(auction_date_str, "%Y-%m-%d")
         
-        # status = "Listed"
-        # sold_price = None
+        status = "Listed"
+        sold_price = None
+        suggested_stream = "Online" if lot["estimate_low"] < 20000 else "Physical"
         
-        # if auction_dt < datetime.now():
-        #     status = "Sold" if random.random() > 0.2 else "Unsold"
-        #     if status == "Sold":
-        #         sold_price = int(lot["estimate_low"] + random.uniform(0, lot["estimate_high"] - lot["estimate_low"]))
         medium = lot.get("medium") or lot.get("image_type")
         height = lot.get("height")
         width = lot.get("width")
@@ -260,7 +168,6 @@ def create_mock_data():
         material = lot.get("material")
         weight = lot.get("weight")
         subcategory = lot.get("subject")
-        
         seller_id = client_ids_map[lot.get("seller_idx", 1)]
 
         cursor.execute("""
@@ -275,7 +182,7 @@ def create_mock_data():
             lot_reference, lot["artist"], lot["title"], lot["year"], lot["category"],
             lot["description"], dimensions_str,
             lot["estimate_low"], lot["estimate_high"], lot["reserve"], 
-            'Listed', seller_id, auction_id, suggested_stream, None,
+            status, seller_id, auction_id, suggested_stream, sold_price,
             medium, material, weight, height, db_width, db_depth, is_framed, subcategory
         ))
         
@@ -289,79 +196,43 @@ def create_mock_data():
             VALUES (?, ?, ?, 1)
         """, (lot_id, image_url, thumbnail_url))
 
-    # TRANSACTIONS DATA
     
-    cursor.execute("SELECT id, seller_id, estimate_low, estimate_high, title FROM lots")
-    all_lot_rows = list(cursor.fetchall())
+    placeholders = ','.join('?' for _ in past_auction_ids)
+    cursor.execute(f"SELECT id, seller_id, estimate_low, estimate_high, title FROM lots WHERE auction_id IN ({placeholders})", past_auction_ids)
     
-    sold_count = 0
+    past_lots_rows = list(cursor.fetchall())
+    random.shuffle(past_lots_rows)
     
-    admin_lots = [l for l in all_lot_rows if l[1] == admin_id]
+    to_sell_count = int(len(past_lots_rows) * 0.8)
     
-    if admin_lots:
-        target_lot = admin_lots[0]
+    for i in range(to_sell_count):
+        target_lot = past_lots_rows[i]
         lid, sid, low, high, title = target_lot
         
-        buyer_id = random.choice([b for b in buyer_ids if b != sid])
-        
-        hammer = round(random.uniform(low, high), 2)
-        prem = round(hammer * 0.12, 2)
-        comm = round(hammer * 0.10, 2)
-        
-        cursor.execute("""
-            INSERT INTO transactions (lot_id, buyer_id, seller_id, hammer_price, buyers_premium, sellers_commission, total_buyer_pays, total_seller_receives) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (lid, buyer_id, sid, hammer, prem, comm, hammer+prem, hammer-comm))
-        cursor.execute("UPDATE lots SET status = 'Sold', sold_price = ? WHERE id = ?", (hammer, lid))
-        print(f"-> Joint Client (Admin) SOLD: {title}")
-        
-        sold_count += 1
-        all_lot_rows.remove(target_lot)
-
-    other_lots = [l for l in all_lot_rows if l[1] != admin_id]
-    
-    if other_lots:
-        target_lot = other_lots[0]
-        lid, sid, low, high, title = target_lot
-        
-        hammer = round(random.uniform(low, high), 2)
-        prem = round(hammer * 0.12, 2)
-        comm = round(hammer * 0.10, 2)
-        
-        cursor.execute("""
-            INSERT INTO transactions (lot_id, buyer_id, seller_id, hammer_price, buyers_premium, sellers_commission, total_buyer_pays, total_seller_receives) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (lid, admin_id, sid, hammer, prem, comm, hammer+prem, hammer-comm))
-        cursor.execute("UPDATE lots SET status = 'Sold', sold_price = ? WHERE id = ?", (hammer, lid))
-        print(f"-> Joint Client (Admin) BOUGHT: {title}")
-        
-        sold_count += 1
-        all_lot_rows.remove(target_lot)
-
-    remaining_to_sell = 6 - sold_count
-    
-    random.shuffle(all_lot_rows)
-    
-    for i in range(remaining_to_sell):
-        if not all_lot_rows: break
-        
-        target_lot = all_lot_rows.pop()
-        lid, sid, low, high, title = target_lot
-        
+       
         valid_buyers = [b for b in buyer_ids if b != sid]
         if not valid_buyers: continue
         buyer_id = random.choice(valid_buyers)
         
-        hammer = round(random.uniform(low, high), 2)
-        prem = round(hammer * 0.12, 2)
-        comm = round(hammer * 0.10, 2)
+        
+        hammer = round(random.uniform(low, high * 1.1), 2) # Sometimes goes over estimate
+        prem = round(hammer * 0.10, 2)
+        comm = round(hammer * 0.20, 2)
+        
         
         cursor.execute("""
             INSERT INTO transactions (lot_id, buyer_id, seller_id, hammer_price, buyers_premium, sellers_commission, total_buyer_pays, total_seller_receives) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (lid, buyer_id, sid, hammer, prem, comm, hammer+prem, hammer-comm))
+        
+        
         cursor.execute("UPDATE lots SET status = 'Sold', sold_price = ? WHERE id = ?", (hammer, lid))
-        sold_count += 1
+        print(f"-> Sold Lot {lid} ({title}) for {hammer}")
+
+    
+    for i in range(to_sell_count, len(past_lots_rows)):
+        lid = past_lots_rows[i][0]
+        cursor.execute("UPDATE lots SET status = 'Unsold' WHERE id = ?", (lid,))
 
     conn.commit()
     conn.close()
@@ -369,7 +240,7 @@ def create_mock_data():
     print(f" Mock data created successfully in {db_path}!")
     print(f"   - {len(clients_data)} clients")
     print(f"   - {len(auctions_data)} auctions")
-    print(f"   - {len(all_lots)} lots")
+    print(f"   - {len(all_lots)} lots total")
 
 if __name__ == "__main__":
     create_mock_data()

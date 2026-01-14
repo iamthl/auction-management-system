@@ -31,13 +31,27 @@ export default function AuctionDetailPage() {
         api.getAuction(auctionId),
         api.getLots({ auction_id: auctionId }) 
       ])
+      
+      const isAuctionCompleted = 
+        auctionData.status === 'Completed' || 
+        new Date(auctionData.auction_date) < new Date();
+
       setAuction(auctionData)
+      
+      if (isAuctionCompleted) {
+          lotsData.sort((a, b) => (b.sold_price || 0) - (a.sold_price || 0))
+      }
+      
       setLots(lotsData)
     } catch (error) {
       console.error("Failed to load auction data:", error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(val)
   }
 
   const handleDownloadCatalogue = async () => {
@@ -85,6 +99,9 @@ export default function AuctionDetailPage() {
     )
   }
 
+  const isCompleted = auction.status === 'Completed' || new Date(auction.auction_date) < new Date();
+  const displayStatus = isCompleted ? "Completed" : "Upcoming";
+
   return (
     <div className="min-h-screen bg-background text-muted-foreground">
       <PublicHeader />
@@ -102,7 +119,7 @@ export default function AuctionDetailPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <Badge>{auction.auction_type}</Badge>
-              <Badge variant="outline">{auction.status}</Badge>
+              <Badge variant={isCompleted ? "secondary" : "outline"}>{displayStatus}</Badge>
             </div>
             
             <h1 className="text-4xl md:text-5xl font-serif font-bold text-foreground">
@@ -127,32 +144,38 @@ export default function AuctionDetailPage() {
             </div>
           </div>
 
-          {/* Print Catalogue Button */}
-          <Button 
-            size="lg" 
-            onClick={handleDownloadCatalogue} 
-            disabled={generatingPdf}
-            className="shrink-0"
-          >
-            {generatingPdf ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Printer className="h-4 w-4 mr-2" />
-            )}
-            {generatingPdf ? "Generating PDF..." : "Print Catalogue"}
-          </Button>
+          {/* Print Catalogue */}
+          {!isCompleted && (
+            <Button 
+                size="lg" 
+                onClick={handleDownloadCatalogue} 
+                disabled={generatingPdf}
+                className="shrink-0"
+            >
+                {generatingPdf ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                <Printer className="h-4 w-4 mr-2" />
+                )}
+                {generatingPdf ? "Generating PDF..." : "Print Catalogue"}
+            </Button>
+          )}
         </div>
 
-        {/* Lots List (Filtered for this auction) */}
+        {/* Lots List */}
         <div className="space-y-6">
           <h2 className="text-2xl font-serif font-semibold">
-            Lots in this Auction ({lots.length})
+            {isCompleted ? "Auction Results" : "Lots in this Auction"} ({lots.length})
           </h2>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {lots.map((lot) => (
+            {lots.map((lot) => {
+              const isSold = lot.status === "Sold"
+              const isUnsold = lot.status === "Unsold"
+
+              return (
               <Link key={lot.id} href={`/catalogue/${lot.id}`}>
-                <Card className="group overflow-hidden hover:shadow-lg transition-shadow h-full">
+                <Card className="group overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
                   <div className="aspect-square bg-muted relative overflow-hidden">
                     {lot.images?.[0] ? (
                       <img
@@ -165,26 +188,44 @@ export default function AuctionDetailPage() {
                         No Image
                       </div>
                     )}
-                    <div className="absolute top-4 right-4">
-                      <Badge className="backdrop-blur-md bg-background/80 text-foreground hover:bg-background/90">
-                        Lot {lot.lot_reference}
-                      </Badge>
-                    </div>
+                    
                   </div>
-                  <CardContent className="p-6">
-                    <div className="space-y-2">
+                  
+                  <CardContent className="p-6 flex-1 flex flex-col">
+                    <div className="space-y-1 flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm text-muted-foreground">{lot.lot_reference}</p>
+                        {isCompleted && (
+                        <div className="top-4 right-4 flex gap-2">
+                            {isSold && <Badge className="bg-primary">Sold</Badge>}
+                            {isUnsold && <Badge variant="secondary">Unsold</Badge>}
+                        </div>
+                    )}
+                      </div>
                       <h3 className="font-semibold text-lg text-foreground truncate">{lot.artist}</h3>
                       <p className="text-sm italic text-muted-foreground truncate">{lot.title}</p>
-                      <div className="pt-3 border-t mt-2">
-                        <p className="text-sm font-medium">
-                          £{lot.estimate_low.toLocaleString()} - £{lot.estimate_high.toLocaleString()}
-                        </p>
-                      </div>
+                    </div>
+                    
+                    <div className="pt-3 border-t mt-4">
+                        {isCompleted && isSold ? (
+                            <div className="flex flex-col">
+                                <span className="text-sm font-medium text-foreground">
+                                Hammer Price: {formatCurrency(lot.sold_price || 0)}
+                                </span>
+                                <span className="text-xs text-muted-foreground mt-1">
+                                Estimate: {formatCurrency(lot.estimate_low)} - {formatCurrency(lot.estimate_high)}
+                                </span>
+                            </div>
+                        ) : (
+                            <p className="text-sm font-medium">
+                                Estimate: {formatCurrency(lot.estimate_low)} - {formatCurrency(lot.estimate_high)}
+                            </p>
+                        )}
                     </div>
                   </CardContent>
                 </Card>
               </Link>
-            ))}
+            )})}
           </div>
         </div>
       </div>

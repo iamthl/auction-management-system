@@ -53,6 +53,9 @@ export default function LotDetailPage() {
     ? lot.images
     : [{ image_url: `/placeholder.svg?height=800&width=800&query=fine+art+${lot.artist}`, is_primary: true, media_type: 'image' }]
 
+  const isSold = lot.status === "Sold"
+  const isUnsold = lot.status === "Unsold"
+
   return (
     <div className="min-h-screen bg-background ">
       <PublicHeader />
@@ -128,11 +131,11 @@ export default function LotDetailPage() {
             <div className="flex gap-2 flex-wrap">
               <Badge variant="outline">{lot.triage_status}</Badge>
               <Badge variant="secondary">{lot.category}</Badge>
-              {lot.subcategory && <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted/80">{lot.subcategory}</Badge>}
+              {lot.subject && <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted/80">{lot.subject}</Badge>}
             </div>
 
             {/* Specifications */}
-            <div className="space-y-3 py-6 border-y border-border">
+            <div className="spazce-y-3 py-6 border-y border-border">
               
               {/* Dimensions */}
               {(lot.height || lot.width || lot.depth) && (
@@ -204,17 +207,35 @@ export default function LotDetailPage() {
               </div>
             )}
 
-            {/* Estimate */}
-            <div className="bg-muted/50 rounded-sm p-6">
-              <p className="text-sm text-muted-foreground mb-1">Estimate</p>
-              <p className="text-2xl font-serif font-bold text-foreground">
-                £{lot.estimate_low.toLocaleString()} - £{lot.estimate_high.toLocaleString()}
-              </p>
+            <div className="bg-white border rounded-sm p-6">
+              {isSold ? (
+                  <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground mb-1">
+                          Hammer Price
+                      </p>
+                      <p className="text-2xl font-serif font-bold text-foreground">
+                          £{lot.sold_price?.toLocaleString()}
+                      </p>
+                      <div className="pt-3 mt-3 border-t border-border flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">Estimate:</span>
+                          <span className="text-sm font-medium text-muted-foreground">
+                              £{lot.estimate_low.toLocaleString()} - £{lot.estimate_high.toLocaleString()}
+                          </span>
+                      </div>
+                  </div>
+              ) : (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Estimate</p>
+                    <p className="text-2xl font-serif font-bold text-foreground">
+                      £{lot.estimate_low.toLocaleString()} - £{lot.estimate_high.toLocaleString()}
+                    </p>
+                  </div>
+              )}
             </div>
 
             {/* Auction Details */}
             {lot.auction_title && (
-              <div className="space-y-3 p-6 border border-border rounded-sm">
+              <div className="space-y-3 p-6 bg-muted/50 rounded-sm p-6">
                 <h3 className="font-semibold text-foreground">{lot.auction_title}</h3>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
