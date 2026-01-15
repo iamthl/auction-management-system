@@ -10,7 +10,7 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section className="relative h-[80vh] flex items-center justify-center bg-gradient-to-b from-muted/30 to-background">
-        <div className="absolute inset-0 bg-[url('/luxury-art-gallery.png')] bg-cover bg-center opacity-10" />
+        <div className="absolute inset-0 bg-[url('/gallery.jpeg')] bg-cover bg-center opacity-10" />
         <div className="relative text-center space-y-6 px-4 max-w-4xl">
           <h1 className="text-5xl md:text-7xl font-serif font-bold text-foreground tracking-tight text-balance">
             {"Fine Art & Luxury Auctions"}
@@ -38,9 +38,9 @@ export default function HomePage() {
           <h2 className="text-3xl md:text-4xl font-serif font-bold text-center mb-12 text-foreground">Our Locations</h2>
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { city: "London", address: "Bond Street, Mayfair", image: "historic+london+building" },
-              { city: "Paris", address: "8th Arrondissement", image: "parisian+architecture" },
-              { city: "New York", address: "Upper East Side", image: "manhattan+gallery" },
+              { city: "London", address: "Bond Street, Mayfair", image: "/London.avif" },
+              { city: "Paris", address: "8th Arrondissement", image: "/Paris.jpg" },
+              { city: "New York", address: "Upper East Side", image: "/New-York.webp" },
             ].map((location) => (
               <div
                 key={location.city}
@@ -48,7 +48,7 @@ export default function HomePage() {
               >
                 <div className="aspect-[4/3] bg-muted relative overflow-hidden">
                   <img
-                    src={`/.jpg?height=400&width=600&query=${location.image}`}
+                    src={location.image}
                     alt={location.city}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -69,7 +69,7 @@ export default function HomePage() {
       {/* Coming Soon */}
       <section className="py-24 px-4 bg-muted/30">
         <div className="mx-auto max-w-4xl text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/10 text-secondary text-sm font-medium">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium">
             <Calendar className="h-4 w-4" />
             Coming Soon
           </div>

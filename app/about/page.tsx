@@ -8,9 +8,9 @@ import { ShieldCheck, Globe, Gavel, Users } from "lucide-react"
 export default function AboutPage() {
   const team = [
     { name: "Max Fotherby", role: "Fotherby's Owner & Writer", image: "/placeholder-user.jpg" }, 
-    { name: "James Sterling", role: "Senior Specialist, Fine Art", image: "/placeholder-user.jpg" },
-    { name: "Sarah Chen", role: "Head of Asian Art", image: "/placeholder-user.jpg" },
-    { name: "Marcus Thorne", role: "Operations Director", image: "/placeholder-user.jpg" },
+    // { name: "James Sterling", role: "Senior Specialist, Fine Art", image: "/placeholder-user.jpg" },
+    // { name: "Sarah Chen", role: "Head of Asian Art", image: "/placeholder-user.jpg" },
+    // { name: "Marcus Thorne", role: "Operations Director", image: "/placeholder-user.jpg" },
   ]
 
   const values = [
@@ -57,8 +57,8 @@ export default function AboutPage() {
             <h2 className="text-3xl font-serif font-bold">Our Story</h2>
             <div className="space-y-4 text-muted-foreground leading-relaxed">
               <p>
-                Founded in London by Eleanor Fotherby, our auction house began as a small gallery 
-                specializing in 19th-century European paintings. Driven by a passion for discovery 
+                Founded in London by Max Fotherby, our auction house began as a small gallery 
+                specialising in 19th-century European paintings. Driven by a passion for discovery 
                 and a commitment to scholarship, we quickly expanded into a full-service auction house.
               </p>
               <p>
@@ -96,7 +96,7 @@ export default function AboutPage() {
             <h2 className="text-3xl font-serif font-bold mb-4">Meet Our Specialists</h2>
             <p className="text-muted-foreground">The experts dedicated to bringing you the finest collections.</p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-1 gap-8">
             {team.map((member, i) => (
               <div key={i} className="group text-center space-y-3">
                 <div className="aspect-square rounded-full overflow-hidden mx-auto w-40 h-40 bg-muted relative mb-4 ring-4 ring-muted/20 group-hover:ring-primary/20 transition-all">

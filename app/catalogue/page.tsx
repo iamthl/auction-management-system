@@ -125,7 +125,7 @@ export default function CataloguePage() {
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-4 items-end ">
+          <div className="flex flex-col lg:flex-row gap-4 items-end text-muted-foreground">
             
             <div className="flex-1 w-full">
                 <Select value={locationFilter} onValueChange={setLocationFilter}>

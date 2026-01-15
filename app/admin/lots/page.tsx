@@ -266,7 +266,7 @@ export default function LotsPage() {
         year: lot.year_of_production?.toString() || "",
         category: lot.category,
         subcategory: lot.subcategory || "",
-        subject: "Landscape", 
+        subject: lot.subject || "", 
         description: lot.description || "",
         estimate_low: lot.estimate_low.toString(),
         estimate_high: lot.estimate_high.toString(),
@@ -668,7 +668,7 @@ export default function LotsPage() {
             <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
-                    placeholder="Title, Artist, Ref..." 
+                    placeholder="Search by title, artist, ref..." 
                     className="pl-9"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
