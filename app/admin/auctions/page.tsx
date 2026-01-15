@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, MapPin, Clock, Search, X, Filter, Save, FileText, Download, Pencil, Trash2, Archive, RefreshCcw, Lock, Plus } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge" 
 
 import { 
   AlertDialog, 
@@ -69,14 +70,31 @@ export default function AuctionsPage() {
 
   useEffect(() => {
     let result = auctions
+    
     if (searchQuery) {
       const lowerQ = searchQuery.toLowerCase()
       result = result.filter(a => a.title.toLowerCase().includes(lowerQ) || (a.theme && a.theme.toLowerCase().includes(lowerQ)))
     }
-    if (statusFilter !== "all") result = result.filter(a => a.status === statusFilter)
+    
+    if (statusFilter !== "all") {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        result = result.filter(a => {
+            const auctionDate = new Date(a.auction_date);
+            const isCompleted = auctionDate < now;
+            const derivedStatus = isCompleted ? "Completed" : "Upcoming";
+            return derivedStatus === statusFilter;
+        })
+    }
+    
+    // 3. Location Filter
     if (locationFilter !== "all") result = result.filter(a => a.location === locationFilter)
+    
+    // 4. Date Filters
     if (dateFrom) result = result.filter(a => new Date(a.auction_date) >= new Date(dateFrom))
     if (dateTo) result = result.filter(a => new Date(a.auction_date) <= new Date(dateTo))
+    
     setFilteredAuctions(result)
   }, [auctions, searchQuery, statusFilter, locationFilter, dateFrom, dateTo])
 
@@ -446,7 +464,7 @@ export default function AuctionsPage() {
                 <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="Upcoming">Upcoming</SelectItem>
-                    <SelectItem value="Past">Past</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
                 </SelectContent>
             </Select>
         </div>
@@ -513,85 +531,95 @@ export default function AuctionsPage() {
                 No auctions match your filters.
             </div>
         ) : (
-            filteredAuctions.map((auction) => (
-            <Card key={auction.id} className="flex flex-col">
-                <CardHeader>
-                  <CardTitle className="text-lg flex justify-between items-start text-foreground">
-                      <span>{auction.title}</span>
-                  </CardTitle>
-                  <CardDescription>{auction.theme}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1">
-                <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Location:</span>
-                      <span className="font-medium">{auction.location}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Date:</span>
-                      <span className="font-medium">{new Date(auction.auction_date).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Time:</span>
-                      <span className="font-medium">{auction.start_time}</span>
-                    </div>
-                </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-2 pt-0">
-                    {viewMode === "active" ? (
-                    <>
-                        <div className="flex w-full gap-2"><Button variant="outline" size="sm" className="flex-1" onClick={() => startEditing(auction)}><Pencil className="h-3 w-3 mr-1" /> Edit</Button>
-                        <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm" className="flex-1">
-                                        <Trash2 className="h-3 w-3 mr-1" /> Delete
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This will permanently delete the auction "{auction.title}". This cannot be undone. 
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDelete(auction.id)}>Delete</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>                        
+            filteredAuctions.map((auction) => {
+                const isCompleted = new Date(auction.auction_date) < new Date();
+                const displayStatus = isCompleted ? "Completed" : "Upcoming";
+                const badgeVariant = isCompleted ? "secondary" : "default";
+
+                return (
+                <Card key={auction.id} className="flex flex-col">
+                    <CardHeader>
+                      <div className="flex items-start justify-between mb-2">
+                        <Badge variant="outline">{auction.auction_type}</Badge>
+                        <Badge>Upcoming</Badge>
+                      </div>
+                      <CardTitle className="text-lg text-foreground">
+                        {auction.title}
+                      </CardTitle>
+                      
+                      <CardDescription>{auction.theme}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1">
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                        <span className="text-muted-foreground">Location:</span>
+                        <span className="font-medium">{auction.location}</span>
                         </div>
-                        <div className="flex w-full gap-2"><Button variant="outline" size="sm" className="flex-1" onClick={() => handleArchive(auction.id)}><Archive className="h-3 w-3 mr-1" /> Archive</Button><Button onClick={() => openCatalogueDialog(auction)} className="flex-1" variant="outline" size="sm"><FileText className="h-3 w-3 mr-1" /> Catalogue</Button></div>
-                    </>
-                ) : (
-                    <div className="flex w-full gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => handleRestore(auction.id)}>
-                            <RefreshCcw className="h-3 w-3 mr-1" /> Restore
-                        </Button>
-                        <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm" className="flex-1">
-                                        <Trash2 className="h-3 w-3 mr-1" /> Delete
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Permanently Delete?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This will permanently remove this auction from the database.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDelete(auction.id)}>Delete Permanently</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                        <div className="flex justify-between">
+                        <span className="text-muted-foreground">Date:</span>
+                        <span className="font-medium">{new Date(auction.auction_date).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                        <span className="text-muted-foreground">Time:</span>
+                        <span className="font-medium">{auction.start_time}</span>
+                        </div>
                     </div>
-                )}
-                </CardFooter>
-            </Card>
-            ))
+                    </CardContent>
+                    <CardFooter className="flex flex-col gap-2 pt-0">
+                        {viewMode === "active" ? (
+                        <>
+                            <div className="flex w-full gap-2"><Button variant="outline" size="sm" className="flex-1" onClick={() => startEditing(auction)}><Pencil className="h-3 w-3 mr-1" /> Edit</Button>
+                            <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" size="sm" className="flex-1">
+                                            <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This will permanently delete the auction "{auction.title}". This cannot be undone. 
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDelete(auction.id)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>                        
+                            </div>
+                            <div className="flex w-full gap-2"><Button variant="outline" size="sm" className="flex-1" onClick={() => handleArchive(auction.id)}><Archive className="h-3 w-3 mr-1" /> Archive</Button><Button onClick={() => openCatalogueDialog(auction)} className="flex-1" variant="outline" size="sm"><FileText className="h-3 w-3 mr-1" /> Catalogue</Button></div>
+                        </>
+                    ) : (
+                        <div className="flex w-full gap-2">
+                            <Button variant="outline" size="sm" className="flex-1" onClick={() => handleRestore(auction.id)}>
+                                <RefreshCcw className="h-3 w-3 mr-1" /> Restore
+                            </Button>
+                            <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" size="sm" className="flex-1">
+                                            <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Permanently Delete?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This will permanently remove this auction from the database.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDelete(auction.id)}>Delete Permanently</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                        </div>
+                    )}
+                    </CardFooter>
+                </Card>
+            )})
         )}
       </div>
     </div>
