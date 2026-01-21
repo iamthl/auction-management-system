@@ -48,7 +48,7 @@ export interface Lot {
   sold_price?: number
   commission_bids: boolean
   triage_status: "Physical" | "Online"
-  status: "Pending" | "Listed" | "Sold" | "Unsold" | "Withdrawn" | "Archived"
+  status: "Pending" | "Listed" | "Sold" | "Unsold" | "Withdrawn" | "Archived" | "Submitted"  
   withdrawal_fee: number
   seller_id?: number
   created_at: string
@@ -72,6 +72,15 @@ export interface Lot {
   width?: number
   depth?: number
   is_framed?: boolean
+  provenance?: string
+  is_authenticated?: boolean
+  client_signature?: string
+  client_signed_date?: string
+  expert_name?: string
+  expert_notes?: string
+  requested_time_frame?: string
+  expert_signature?: string
+  expert_signed_date?: string
 }
 
 export interface CommissionResult {
@@ -377,5 +386,34 @@ export const api = {
       headers: getAuthHeaders(),
     })
     if (!res.ok) throw new Error("Failed to delete client")
+  },
+
+  async placeBid(lotId: number, amount: number): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/api/lots/${lotId}/bid`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ lot_id: lotId, bid_amount: amount }),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.detail || "Failed to place bid")
+    }
+    return res.json()
+  },
+  
+  async getAuctionLog(): Promise<any[]> {
+    const res = await fetch(`${API_BASE_URL}/api/admin/auction-log`, {
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) throw new Error("Failed to fetch log")
+    return res.json()
+  },
+
+  async getLotBids(lotId: number): Promise<any[]> {
+    const res = await fetch(`${API_BASE_URL}/api/lots/${lotId}/bids`, {
+      headers: getAuthHeaders(),
+    })
+    if (!res.ok) throw new Error("Failed to fetch bids")
+    return res.json()
   },
 }
