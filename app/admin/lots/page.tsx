@@ -16,6 +16,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table"
+import { 
   AlertDialog, 
   AlertDialogAction, 
   AlertDialogCancel, 
@@ -26,7 +34,7 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog"
-import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb, Video, Gavel, Search, Filter } from "lucide-react"
+import { Plus, Calendar, Pencil, Trash2, Archive, RefreshCcw, X, Lightbulb, Video, Gavel, Search, Filter, History } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function LotsPage() {
@@ -74,6 +82,25 @@ export default function LotsPage() {
     depth: "",
     is_framed: false,
   })
+
+  const [biddingLog, setBiddingLog] = useState<any[]>([])
+  const [logLoading, setLogLoading] = useState(false)
+  const [showLogDialog, setShowLogDialog] = useState(false)
+  const [activeLogLot, setActiveLogLot] = useState<Lot | null>(null)
+
+  const openBiddingLog = async (lot: Lot) => {
+    setActiveLogLot(lot)
+    setShowLogDialog(true)
+    setLogLoading(true)
+    try {
+      const bids = await api.getLotBids(lot.id)
+      setBiddingLog(bids)
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to load bidding history" })
+    } finally {
+      setLogLoading(false)
+    }
+  }
 
   useEffect(() => {
     loadData()
@@ -149,7 +176,6 @@ export default function LotsPage() {
 
 
 
-  // ... (Keep existing image handlers & submit logic) ...
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
@@ -411,7 +437,7 @@ export default function LotsPage() {
                 value={formData.subcategory} 
                 onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })} 
             />
-            <p className="text-[10px] text-muted-foreground">Type to create or edit subcategory.</p>
+            {/* <p className="text-[10px] text-muted-foreground">Type to create or edit subcategory.</p> */}
         </div>
         
         {isArt2D && (
@@ -660,6 +686,49 @@ export default function LotsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* --- AUCTION LOG DIALOG --- */}
+      <Dialog open={showLogDialog} onOpenChange={setShowLogDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Bidding Log: {activeLogLot?.lot_reference}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="max-h-[400px] overflow-y-auto">
+            {logLoading ? (
+              <div className="py-10 text-center text-muted-foreground">Loading bidding history...</div>
+            ) : biddingLog.length === 0 ? (
+              <div className="py-10 text-center text-muted-foreground">No bids placed on this lot yet.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Bidder</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {biddingLog.map((bid) => (
+                    <TableRow key={bid.id}>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(bid.bid_time).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="font-medium">{bid.client_name}</TableCell>
+                      <TableCell className="text-right font-bold text-primary">
+                        {formatCurrency(bid.bid_amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* --- NEW: FILTER BAR --- */}
       <div className=" space-y-4 md:space-y-0 md:flex md:items-start gap-6 ">
         
@@ -831,8 +900,14 @@ export default function LotsPage() {
                     
                     <div className="flex w-full gap-2">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => handleArchive(lot.id)}>
-                      <Archive className="h-3 w-3 mr-1" /> Archive
+                      <Archive className="h-3 w-3 mr-1" /> Archive </Button>
+                      {lot.status === "Listed" && (
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => openBiddingLog(lot)}>
+                          <History className="h-3 w-3 mr-1" /> Log
                         </Button>
+                      )}
+
+                        
                         {lot.status === "Pending" && (
                             <Dialog>
                             <DialogTrigger asChild>
