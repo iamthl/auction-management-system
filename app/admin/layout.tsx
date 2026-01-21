@@ -51,13 +51,7 @@ export default function AdminLayout({
                   <Users className="h-4 w-4" />
                   Clients
                 </Link>
-                <Link
-                  href="/admin/commission"
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Calculator className="h-4 w-4" />
-                  Commission
-                </Link>
+
               </div>
             </div>
 

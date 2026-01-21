@@ -82,7 +82,17 @@ def startup_event():
         ("width", "REAL"),
         ("depth", "REAL"),
         ("is_framed", "INTEGER DEFAULT 0"),
-        ("subcategory", "TEXT")
+        ("subcategory", "TEXT"),
+        ("provenance", "TEXT"),
+        ("is_authenticated", "BOOLEAN DEFAULT 0"),
+        ("client_signature", "TEXT"),
+        ("client_signed_date", "DATE"),
+        ("expert_name", "TEXT"),
+        ("expert_notes", "TEXT"),
+        ("requested_time_frame", "TEXT"),
+        ("expert_signature", "TEXT"),
+        ("expert_signed_date", "DATE"),
+        ("expert_submission_date", "DATE")
     ]
 
     for col_name, col_type in new_columns:
@@ -181,6 +191,11 @@ class LotCreate(BaseModel):
     width: Optional[float] = None
     depth: Optional[float] = None
     is_framed: Optional[bool] = False
+    provenance: Optional[str] = None
+    is_authenticated: Optional[bool] = False
+    client_signature: Optional[str] = None
+    client_signed_date: Optional[date] = None
+    status: Optional[str] = "Pending"
 
 class LotUpdate(BaseModel):
     lot_reference: Optional[str] = None
@@ -205,6 +220,13 @@ class LotUpdate(BaseModel):
     width: Optional[float] = None
     depth: Optional[float] = None
     is_framed: Optional[bool] = None
+    status: Optional[str] = None
+    expert_name: Optional[str] = None
+    expert_notes: Optional[str] = None
+    requested_time_frame: Optional[str] = None
+    expert_signature: Optional[str] = None
+    expert_signed_date: Optional[date] = None
+    expert_submission_date: Optional[date] = None
 
 class LotResponse(LotCreate):
     id: int
@@ -219,6 +241,9 @@ class LotResponse(LotCreate):
     auction_date: Optional[str] = None
     start_time: Optional[str] = None
     status: str
+    expert_name: Optional[str] = None
+    expert_notes: Optional[str] = None
+    requested_time_frame: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str
@@ -227,6 +252,7 @@ class Token(BaseModel):
     is_staff: bool
     name: str
     email: Optional[str] = None
+    id: int
 
 class ClientRegister(BaseModel):
     title: str
@@ -276,6 +302,10 @@ class CommissionCalculation(BaseModel):
     buyers_premium_rate: float = 0.10
     sellers_commission_rate: float = 0.10
 
+class BidCreate(BaseModel):
+    lot_id: int
+    bid_amount: float
+
 # ENDPOINTS
 
 @app.get("/")
@@ -309,6 +339,8 @@ def register(client: ClientRegister, db: sqlite3.Connection = Depends(get_db)):
         client.bank_account_number, client.bank_sort_code, is_approved
     ))
     db.commit()
+
+    new_client_id = cursor.lastrowid
     
     access_token = create_access_token(data={"sub": client.email})
     return {
@@ -317,7 +349,8 @@ def register(client: ClientRegister, db: sqlite3.Connection = Depends(get_db)):
         "user_type": client.client_type,
         "is_staff": False,
         "name": full_name,
-        "email": client.email
+        "email": client.email,
+        "id": new_client_id
     }
 
 @app.post("/api/auth/token", response_model=Token)
@@ -341,7 +374,8 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         "user_type": user['client_type'],
         "is_staff": bool(user['is_staff']),
         "name": user['name'],
-        "email": user['email']
+        "email": user['email'],
+        "id": user['id']
     }
 
 @app.get("/api/users/me")
@@ -611,21 +645,28 @@ def create_lot(
 ):
     seller_id = current_user['id'] if not current_user['is_staff'] else (lot.seller_id or current_user['id'])
 
+    initial_status = getattr(lot, 'status', 'Pending') or 'Pending'
+
     cursor = db.cursor()
     cursor.execute('''
-        INSERT INTO lots (
-            lot_reference, artist, title, year_of_production, category, subcategory, subject, description,
-            dimensions, framing_details, estimate_low, estimate_high, reserve_price, 
-            triage_status, seller_id, status,
-            medium, material, weight, height, width, depth, is_framed
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending", ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        lot.lot_reference, lot.artist, lot.title, lot.year_of_production, lot.category, lot.subcategory, lot.subject,
-        lot.description, lot.dimensions, lot.framing_details, lot.estimate_low, 
-        lot.estimate_high, lot.reserve_price, lot.triage_status, seller_id,
-        lot.medium, lot.material, lot.weight, lot.height, lot.width, lot.depth, lot.is_framed
-    ))
+            INSERT INTO lots (
+                lot_reference, artist, title, year_of_production, category, subcategory, subject, description,
+                estimate_low, estimate_high, reserve_price, triage_status, seller_id, status,
+                medium, material, weight, height, width, depth, is_framed,
+                provenance, is_authenticated, client_signature, client_signed_date
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            lot.lot_reference, lot.artist, lot.title, lot.year_of_production, lot.category, lot.subcategory, lot.subject, 
+            lot.description, lot.estimate_low, lot.estimate_high, lot.reserve_price, lot.triage_status, 
+            seller_id, initial_status,
+            lot.medium, lot.material, lot.weight, lot.height, lot.width, lot.depth, 
+            lot.is_framed,
+            lot.provenance, 
+            lot.is_authenticated,
+            lot.client_signature, 
+            lot.client_signed_date
+        ))
     db.commit()
     
     lot_id = cursor.lastrowid
@@ -924,6 +965,58 @@ def calculate_commission(calc: CommissionCalculation):
         "total_buyer_pays": calc.hammer_price + buyers_premium,
         "total_seller_receives": calc.hammer_price - sellers_commission
     }
+
+@app.post("/api/lots/{lot_id}/bid")
+def place_bid(lot_id: int, bid: BidCreate, current_user: dict = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
+    cursor = db.cursor()
+    
+    cursor.execute("SELECT reserve_price, status FROM lots WHERE id = ?", (lot_id,))
+    lot = cursor.fetchone()
+    if not lot or lot['status'] != 'Listed':
+        raise HTTPException(status_code=400, detail="Lot is not available for bidding")
+    
+    cursor.execute("SELECT MAX(bid_amount) as max_bid FROM bids WHERE lot_id = ?", (lot_id,))
+    highest_bid = cursor.fetchone()['max_bid'] or 0
+    
+    if bid.bid_amount <= highest_bid:
+        raise HTTPException(status_code=400, detail=f"Bid must be higher than current highest bid (£{highest_bid})")
+
+    cursor.execute('''
+        INSERT INTO bids (lot_id, client_id, bid_amount)
+        VALUES (?, ?, ?)
+    ''', (lot_id, current_user['id'], bid.bid_amount))
+    
+    db.commit()
+    return {"message": "Bid placed successfully", "new_highest": bid.bid_amount}
+
+@app.get("/api/lots/{lot_id}/bids")
+def get_lot_bids(lot_id: int, db: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    
+    cursor = db.cursor()
+    cursor.execute('''
+        SELECT b.*, c.name as client_name 
+        FROM bids b
+        JOIN clients c ON b.client_id = c.id
+        WHERE b.lot_id = ?
+        ORDER BY b.bid_amount DESC
+    ''', (lot_id,))
+    
+    return [dict(row) for row in cursor.fetchall()]
+
+@app.get("/api/admin/auction-log")
+def get_auction_log(current_user: dict = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
+    if not current_user['is_staff']:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    cursor = db.cursor()
+    cursor.execute('''
+        SELECT b.*, c.name as client_name, l.title as lot_title, l.lot_reference
+        FROM bids b
+        JOIN clients c ON b.client_id = c.id
+        JOIN lots l ON b.lot_id = l.id
+        ORDER BY b.bid_time DESC
+    ''')
+    return [dict(row) for row in cursor.fetchall()]
 
 @app.get("/api/catalogue/search")
 def search_catalogue(

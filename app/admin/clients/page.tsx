@@ -57,7 +57,10 @@ export default function ClientsPage() {
   const { toast } = useToast()
 
   const [editingClient, setEditingClient] = useState<ExtendedClient | null>(null)
-    const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+
+  const [viewingSubmissions, setViewingSubmissions] = useState<ExtendedClient | null>(null)
+  const [clientLots, setClientLots] = useState<Lot[]>([])
 
   useEffect(() => {
     loadClients()
@@ -147,6 +150,21 @@ export default function ClientsPage() {
       } catch (error) {
           toast({ title: "Failed to delete client", variant: "destructive" })
       }
+  }
+
+  const handleViewSubmissions = async (client: ExtendedClient) => {
+    setViewingSubmissions(client)
+    try {
+      const lots = await api.getClientLots(client.id)
+      setClientLots(lots)
+    } catch (error) {
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: "Failed to load submissions for this client." 
+      })
+      setViewingSubmissions(null)
+    }
   }
 
   const formatCurrency = (val?: number) => {
@@ -305,6 +323,10 @@ export default function ClientsPage() {
                             >
                               <Trash2 className="mr-2 h-4 w-4 focus:text-foreground" /> Delete
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleViewSubmissions(client)}>
+                              <Gavel className="mr-2 h-4 w-4" />
+                              View Submissions
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -402,6 +424,45 @@ export default function ClientsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Submissions Dialog */}
+      <Dialog open={!!viewingSubmissions} onOpenChange={() => setViewingSubmissions(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Submissions for {viewingSubmissions?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {clientLots.filter(l => l.status === "Submitted").map(lot => (
+              <div key={lot.id} className="border p-4 rounded-md space-y-3">
+                <div className="flex justify-between">
+                  <h4 className="font-bold">{lot.title} by {lot.artist}</h4>
+                  <Badge>New Submission</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-2">{lot.description}</p>
+                <div className="text-xs bg-muted p-2 rounded">
+                  <strong>Provenance:</strong> {lot.provenance || "No details provided"}
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm">Download Agreement PDF</Button>
+                  <Button 
+                    size="sm" 
+                    onClick={async () => {
+                      await api.updateLot(lot.id, { status: "Pending" })
+                      toast({ title: "Approved", description: "Item moved to Lots Management." })
+                      loadClients() 
+                    }}
+                  >
+                    Approve & Move to Lots
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {clientLots.filter(l => l.status === "Submitted").length === 0 && (
+              <p className="text-center text-muted-foreground py-8">No pending submissions for this client.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )

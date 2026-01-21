@@ -497,7 +497,7 @@ export default function AuctionsPage() {
                             {dateFrom ? (
                                 dateTo ? `${dateFrom} - ${dateTo}` : `${dateFrom}...`
                             ) : (
-                                "Pick dates"
+                                "Date range"
                             )}
                         </span>
                     </Button>
@@ -541,7 +541,9 @@ export default function AuctionsPage() {
                     <CardHeader>
                       <div className="flex items-start justify-between mb-2">
                         <Badge variant="outline">{auction.auction_type}</Badge>
-                        <Badge>Upcoming</Badge>
+                        <Badge variant={badgeVariant}>
+                            {displayStatus}
+                        </Badge>                      
                       </div>
                       <CardTitle className="text-lg text-foreground">
                         {auction.title}

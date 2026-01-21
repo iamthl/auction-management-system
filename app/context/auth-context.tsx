@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = (newToken: string, userData: any) => {
     const userObj = {
+        id: userData.id,
       name: userData.name,
       // Handle email if present in response, or fallback
       email: userData.email || userData.sub || "", 
