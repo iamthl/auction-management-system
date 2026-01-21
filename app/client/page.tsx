@@ -8,25 +8,31 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, Package, TrendingUp, Clock, Calendar } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useAuth } from "@/app/context/auth-context"
 
 export default function ClientPortalPage() {
+  const { user } = useAuth()
   const [lots, setLots] = useState<Lot[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Mock client ID, in production, this would come from authentication
-  const mockClientId = 2
-
   useEffect(() => {
-    api
-      .getClientLots(mockClientId)
-      .then(setLots)
-      .finally(() => setLoading(false))
-  }, [])
+    if (user?.id) {
+        api
+        .getClientLots(user.id)
+        .then(setLots)
+        .catch((err) => console.error(err))
+        .finally(() => setLoading(false))
+    }
+  }, [user])
+
+  if (!user) {
+      return <div className="p-8 text-center">Please log in to view your dashboard.</div>
+  }
 
   const stats = {
     total: lots.length,
     listed: lots.filter((l) => l.status === "Listed").length,
-    pending: lots.filter((l) => l.status === "Pending").length,
+    pending: lots.filter((l) => l.status === "Pending" || l.status === "Submitted").length,
     sold: lots.filter((l) => l.status === "Sold").length,
     withdrawn: lots.filter((l) => l.status === "Withdrawn").length,
     totalEstimate: lots.reduce((sum, lot) => sum + lot.estimate_high, 0),
@@ -168,7 +174,7 @@ export default function ClientPortalPage() {
                         {lot.sold_price && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Sold Price:</span>
-                            <span className="font-medium text-green-600">£{lot.sold_price.toLocaleString()}</span>
+                            <span className="font-medium text-foreground">£{lot.sold_price.toLocaleString()}</span>
                           </div>
                         )}
 
@@ -206,9 +212,9 @@ export default function ClientPortalPage() {
                         </Alert>
                       )}
 
-                      {lot.status === "Pending" && (
+                      {(lot.status === "Pending" || lot.status === "Submitted") && (
                         <div className="text-xs text-muted-foreground mt-2">
-                          Your item is being prepared for an upcoming auction. You will be notified once it is listed.
+                          Your item is being reviewed or prepared for an upcoming auction.
                         </div>
                       )}
                     </div>

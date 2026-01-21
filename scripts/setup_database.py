@@ -75,6 +75,21 @@ def init_database():
         width REAL,
         depth REAL,
         is_framed BOOLEAN DEFAULT 0,
+                   
+        -- Client Agreement Fields
+        provenance TEXT,
+        is_authenticated BOOLEAN DEFAULT 0,
+        client_signature TEXT,
+        client_signed_date DATE,
+        
+        -- Expert Processing Fields
+        expert_name TEXT,
+        expert_notes TEXT,
+        requested_time_frame TEXT,
+        expert_signature TEXT,
+        expert_signed_date DATE,
+        expert_submission_date DATE,
+                   
         FOREIGN KEY (auction_id) REFERENCES auctions(id) ON DELETE SET NULL,
         FOREIGN KEY (seller_id) REFERENCES clients(id) ON DELETE SET NULL
     )
@@ -131,6 +146,19 @@ def init_database():
         FOREIGN KEY (lot_id) REFERENCES lots(id),
         FOREIGN KEY (buyer_id) REFERENCES clients(id),
         FOREIGN KEY (seller_id) REFERENCES clients(id)
+    )
+    ''')
+
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS bids (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lot_id INTEGER NOT NULL,
+        client_id INTEGER NOT NULL,
+        bid_amount REAL NOT NULL,
+        bid_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_winning BOOLEAN DEFAULT 0,
+        FOREIGN KEY (lot_id) REFERENCES lots(id) ON DELETE CASCADE,
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
     )
     ''')
     

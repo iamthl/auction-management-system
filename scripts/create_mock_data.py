@@ -53,7 +53,7 @@ def create_mock_data():
         ("Madame", "Élise", "Dubois", "Madame Élise Dubois", "8 Avenue Montaigne, 75008 Paris", "e.dubois@example.com", "+33 1 53 67 89 00", "Seller", "55667788", "30-30-30", seller_pass, 0, 1),
         ("Mr", "Chen", "Wei", "Mr. Chen Wei", "88 Nathan Road, Kowloon, Hong Kong", "c.wei@example.com", "+852 2123 4567", "Buyer", "", "", buyer_pass, 0, 1),
         ("Lady", "Victoria", "Pembroke", "Lady Victoria Pembroke", "Pembroke Manor, Hampshire", "victoria@pembroke-estate.co.uk", "+44 20 7946 0958", "Seller", "99887766", "11-22-33", seller_pass, 0, 1),
-        ("Count", "Alessandro", "di Medici", "Count Alessandro di Medici", "Palazzo Medici, Florence", "alessandro@medici-collection.it", "+39 055 123 4567", "Seller", "66554433", "44-55-66", seller_pass, 0, 1),
+        ("Count", "Alessandro", "di Medici", "Count Alessandro di Medici", "Palazzo Medici, Florence", "alessandro@medici-collection.it", "+39 055 123 4567", "Seller", "66554433", "44-55-66", seller_pass, 0, 0),
         ("Mrs", "Charlotte", "Whitmore", "Mrs. Charlotte Whitmore", "Upper East Side, New York", "charlotte@whitmore-gallery.com", "+1 212 555 0123", "Seller", "22334455", "77-88-99", seller_pass, 0, 1),
         ("Sir", "Henry", "Ashford", "Sir Henry Ashford", "Ashford Hall, Yorkshire", "henry@ashford-holdings.co.uk", "+44 20 7946 1234", "Seller", "99001122", "99-00-11", seller_pass, 0, 1),
     ]
